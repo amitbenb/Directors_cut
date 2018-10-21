@@ -1,20 +1,20 @@
 import random as rn
 import copy as cp
 
-import handle_data.Data_File_Reader as data_reader
+import handle_data.Data_File_Reader as DataReader
 
-_data_file_name = data_reader._main_dir + "data/merged_data.csv"
+_data_file_name = DataReader._main_dir + "data/merged_data.csv"
 _hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs', 'director_list']
 _conclusion_field_list = ['dam_option_awards', 'dam_stock', 'dam_acc', 'dam_abs', 'dam_rel']
 _sample_size = 100
 
 
-class Rule_Generator:
+class RuleGenerator:
 
     def __init__(self, data_file_name=_data_file_name):
         self.data = []
         self.last_rule = {}
-        data_reader.load_data_file(self.data, data_file_name)
+        DataReader.load_data_file(self.data, data_file_name)
         pass
 
     def generate_random_rule(self):
@@ -126,7 +126,10 @@ class Rule_Generator:
             print("WHAT!?!")
             string_rule = '%s is in %s' % (element['member'], element['list_name'])
         elif type(element[1]) is str:
-            string_rule = '%s = %s' % (element[0], element[1])
+            if element[1] is '':
+                string_rule = '%s is <EMPTY>' % (element[0])
+            else:
+                string_rule = '%s = %s' % (element[0], element[1])
         elif type(element[1]) is list:
             if list_member is not None:
                 string_rule = '%s is in %s' % (list_member, element[0])
@@ -211,16 +214,19 @@ class Rule_Generator:
 
 
 if __name__ == "__main__":
-    _rg = Rule_Generator()
+    _rg = RuleGenerator()
 
-    for _ in range(30):
+    for _ in range(100):
 
         # _rule = _rg.generate_random_rule()
         _rule = _rg.generate_rosit_rule()
 
-        # _rg.rule_to_string(_rule)
-        print(_rg.rule_to_string(_rule))
+        rule_as_string = _rg.rule_to_string(_rule)
+        rule_score = _rg.calculate_correctness(_rule)
 
-        print(_rg.calculate_correctness(_rule))
+        if rule_score['correctness'] > 0:
+            print(rule_as_string)
+            print(rule_score)
+            print()
 
     pass
