@@ -1,5 +1,6 @@
 import time as t
 import copy as cp
+import re
 
 _main_dir = "C:/Users/User/PycharmProjects/Directors_cut/"
 
@@ -111,6 +112,17 @@ def load_data_file(company_and_director_data, filename):
                     else:
                         company_and_director_data[-1][itm.replace('\n', '')] = parsed_line[idx].replace(
                             '&&', '').split('&')
+                elif itm in ['fyear', 'log_ta', 'mtb', 'debtat', 'roa'] and parsed_line[idx] is not '':
+                    # print(itm, parsed_line[idx], idx)
+                    # print(type(parsed_line[idx]))
+                    if re.match(r'-?\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                        company_and_director_data[-1][itm.replace('\n', '')] = int(parsed_line[idx])
+                    elif re.match(r'-?\d+[.]\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                        company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
+                    elif re.match(r'-?\d[.]\d+e-\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                        company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
+                    elif re.match(r'-?\d[.]\d+e\+\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                        company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
                 elif itm is not '\n':
                     company_and_director_data[-1][itm.replace('\n', '')] = parsed_line[idx]
 

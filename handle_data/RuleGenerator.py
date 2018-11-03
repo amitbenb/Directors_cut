@@ -4,9 +4,10 @@ import copy as cp
 import handle_data.Data_File_Reader as DataReader
 
 _data_file_name = DataReader._main_dir + "data/merged_data.csv"
-_hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs', 'director_list']
+_hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs',
+                          'director_list']
 _conclusion_field_list = ['dam_option_awards', 'dam_stock', 'dam_acc', 'dam_abs', 'dam_rel']
-_sample_size = 100
+_sample_size = 1000
 
 
 class RuleGenerator:
@@ -74,39 +75,13 @@ class RuleGenerator:
             rule_line = list(rule["line"].items())
 
             string_rule = 'If ('
-            # string_rule = '%s = %s' % (rule_line[rule["hypothesis"][0]][0], rule_line[rule["hypothesis"][0]][1])
-            # print("Rule: ", rule)
-            # print("Rule Line: ", rule_line)
-            # print(rule["hypothesis"][0])
-            # print(len(rule_line))
-            # print("XXX ", rule_line)
-
-            # itm = rule["hypothesis"][0]
-            #
-            # if type(itm) is int:
-            #     # print("YYY")
-            #     string_rule += (self.rule_element_to_string(rule_line[itm]))
-            # else:  # type(rule["hypothesis"][0]) is dict
-            #     # print(i)
-            #     # print(type(rule_line[i['index']][1]))
-            #     string_rule += (self.rule_element_to_string(rule_line[itm['index']], itm['member']))
-            # # print(rule_line[rule["hypothesis"][0]])
-            # # print(rule["hypothesis"][1:])
 
             for idx, itm in enumerate(rule["hypothesis"]):
-                # print("GGG")
-                # print(i)
-                # print(rule_line[i][0])
-                # print(rule_line[i][1])
-                # string_rule += ' and ' + (str(rule_line[i][0]) + ' = ' + str(rule_line[i][1]))
-                # string_rule += ' and ' + (self.rule_element_to_string(rule_line[i]))
                 if idx != 0:
                     string_rule += ' and '
                 if type(itm) is int:
                     string_rule += (self.rule_element_to_string(rule_line[itm]))
                 else:  # type(i) is dict
-                    # print(i)
-                    # print(type(rule_line[i['index']][1]))
                     string_rule += (self.rule_element_to_string(rule_line[itm['index']], itm['member']))
 
             string_rule += ')\nThen '
@@ -125,6 +100,8 @@ class RuleGenerator:
         if type(element) is int:
             print("WHAT!?!")
             string_rule = '%s is in %s' % (element['member'], element['list_name'])
+        elif type(element[1]) in [int, float]:
+            string_rule = '%s = %s' % (element[0], str(element[1]))
         elif type(element[1]) is str:
             if element[1] is '':
                 string_rule = '%s is <EMPTY>' % (element[0])
@@ -141,15 +118,14 @@ class RuleGenerator:
         #     print(element[1])
         #     print('fffff')
 
-
         return string_rule
 
     def calculate_correctness(self, rule='last rule'):
         if rule == 'last rule':
             rule = self.last_rule
-        ret_val = {"correctness": 0.0, "relevance": 0.0}
+        ret_val = {"correctness": 0.0, "relevance": 0.0, "conclusion_true": 0.0}
         sample_size = _sample_size
-        relevance_count = correctness_count = 0.0
+        conclusion_true_count = relevance_count = correctness_count = 0.0
 
         for _ in range(sample_size):
             line = rn.choice(self.data)
@@ -159,9 +135,15 @@ class RuleGenerator:
                 relevance_count += 1
                 if self.is_correct(rule, line):
                     correctness_count += 1
+                    conclusion_true_count += 1
+            else:
+                if self.is_correct(rule, line):
+                    conclusion_true_count += 1
+
 
         ret_val["relevance"] = relevance_count / sample_size
         ret_val["correctness"] = correctness_count / max(relevance_count, 0.1)  # Do not divide by zero!
+        ret_val["conclusion_true"] = conclusion_true_count / sample_size
         return ret_val
 
     def is_relevant(self, rule, line):
@@ -176,6 +158,9 @@ class RuleGenerator:
             else:  # type(h) is dict
                 # print("What now?")
                 # actual_value = list(rule["line"].items())[h['index']]
+                # print(h['index'])
+                # print(len(list(line.keys())), list(line.keys()))
+                # print(len(list(line.items())), list(line.items()))
                 hypothesis_to_check = list(line.items())[h['index']]  # List to search in
                 member = h['member']  # Possible member of list
 
@@ -222,8 +207,14 @@ if __name__ == "__main__":
         _rule = _rg.generate_rosit_rule()
 
         rule_as_string = _rg.rule_to_string(_rule)
+        # print(rule_as_string)
         rule_score = _rg.calculate_correctness(_rule)
 
+        # print(rule_as_string)
+        # print(rule_score)
+        # print()
+
+        # if rule_score['relevance'] > 0:
         if rule_score['correctness'] > 0:
             print(rule_as_string)
             print(rule_score)
