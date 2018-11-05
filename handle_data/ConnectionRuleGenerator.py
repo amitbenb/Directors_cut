@@ -12,11 +12,11 @@ import handle_data.RuleGenerator as RuleGen
 
 _list_of_method_names = [
     {'name': 'member_in_common', 'types': [list], 'param_types': []},
-    {'name': 'k_members_in_common', 'types': [list], 'param_types': [int]},
+    # {'name': 'k_members_in_common', 'types': [list], 'param_types': [int]},
     {'name': 'same_as', 'types': [list, int, float, str, type(None)], 'param_types': []},
     # {'name': 'similar_to', 'types': [list, str], 'param_types': [int, float]},
     {'name': 'similar_number_to', 'types': [int, float], 'param_types': [float]},
-    {'name': 'lesser_equal', 'types': [int, float], 'param_types': [int, float]},
+    # {'name': 'lesser_equal', 'types': [int, float], 'param_types': [int, float]},
     # {'name': 'greater_equal', 'types': [int, float], 'param_types': [int, float]},
 ]
 # _list_of_function_names = []
@@ -53,9 +53,10 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
 
         # print(lines[0])
-        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 3)),
-                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 3)),
-                          "hypothesis_functions": [], "conclusion_functions": []}
+        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(3, 4)),
+                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 2)),
+                          "hypothesis_functions": [], "conclusion_functions": [],
+                          "hypothesis_operators": [], "conclusion_operators": []}
 
         # print(self.last_rule["hypothesis_idxes"])
         # print(self.last_rule["conclusion_idxes"])
@@ -64,12 +65,14 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             self.last_rule["hypothesis_functions"].append(
                 self.generate_rule_function(type(list(lines[0].values())[itm]),
                                             type(list(lines[1].values())[itm])))
+            self.last_rule["hypothesis_operators"].append(rn.choice(['AND', 'OR', 'AND NOT', 'OR NOT']))
             pass
 
         for idx, itm in enumerate(self.last_rule["conclusion_idxes"]):
             self.last_rule["conclusion_functions"].append(
                 self.generate_rule_function(type(list(lines[0].values())[itm]),
                                             type(list(lines[1].values())[itm])))
+            self.last_rule["conclusion_operators"].append(rn.choice(['AND', 'OR', 'AND NOT']))
             pass
 
         # # Allow for list membership rules.
@@ -124,9 +127,13 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
             string_rule = 'If ('
 
+            if 'NOT' in rule["hypothesis_operators"][0]:
+                string_rule += 'NOT '
+
             for idx, itm in enumerate(rule["hypothesis_idxes"]):
                 if idx != 0:
-                    string_rule += ' and '
+                    # string_rule += ' and '
+                    string_rule += ' ' + rule['hypothesis_operators'][idx] + ' '
                 # print(itm)
                 if type(itm) is int:
                     string_rule += (self.rule_element_to_string(rule, idx, part='hypothesis'))
@@ -135,11 +142,15 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
                     print("rule_to_string() hypothesis loop.")
 
             string_rule += ')\nThen ('
+            if 'NOT' in rule["conclusion_operators"][0]:
+                string_rule += 'NOT '
+
             # string_rule += (self.rule_element_to_string(rule_line[rule["conclusion"][0]]))
 
             for idx, itm in enumerate(rule["conclusion_idxes"]):
                 if idx != 0:
-                    string_rule += ' and '
+                    # string_rule += ' and '
+                    string_rule += ' ' + rule['conclusion_operators'][idx] + ' '
                 if type(itm) is int:
                     string_rule += (self.rule_element_to_string(rule, idx, part='conclusion'))
                 else:
@@ -157,7 +168,7 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         :param rule:
         :param idx_in_lines:
         :param part: 'hypothesis' or 'conclusion'
-        :return: A string represtenting the rule element.
+        :return: A string representing the rule element.
         """
         ret_val = ''
 
@@ -202,41 +213,117 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         ret_val["conclusion_true"] = conclusion_true_count / sample_size
         return ret_val
 
-    def is_relevant(self, rule):
-        relevance = True
-        for idx, itm in enumerate(rule["hypothesis_idxes"]):
-            func_eval = self.calculate_function(rule["hypothesis_functions"][idx]["func_name"],
-                                                list(rule["lines"][0].values())[itm],
-                                                list(rule["lines"][1].values())[itm],
-                                                rule["hypothesis_functions"][idx]["extra_parameters"])
-            if func_eval is False:
-                relevance = False
-                break
+    # def is_relevant_old(self, rule):
+    #     relevance = True
+    #     for idx, itm in enumerate(rule["hypothesis_idxes"]):
+    #         func_eval = self.calculate_function(rule["hypothesis_functions"][idx]["func_name"],
+    #                                             list(rule["lines"][0].values())[itm],
+    #                                             list(rule["lines"][1].values())[itm],
+    #                                             rule["hypothesis_functions"][idx]["extra_parameters"])
+    #         if func_eval is False:
+    #             relevance = False
+    #             break
+    #
+    #         # print(list(rule["line"].items())[h])
+    #         # print(hypothesis_to_check)
+    #     return relevance
+    #
+    # def is_correct_old(self, rule):
+    #     # self.last_rule =
+    #     # x ={"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 3)),
+    #     #     "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 3)),
+    #     #  "hypothesis_functions": [], "conclusion_functions": []}
+    #     #
+    #     # y = {"func_name": chosen_func["name"],
+    #     #      "extra_parameters": [self.generate_random_parameter_of_type(t) for t in chosen_func["param_types"]]}
+    #     #
+    #     # # def calculate_function(self, func_name, item1, item2, extra_parameters):
+    #
+    #     correctness = True
+    #     for idx, itm in enumerate(rule["conclusion_idxes"]):
+    #         func_eval = self.calculate_function(rule["conclusion_functions"][idx]["func_name"],
+    #                                             list(rule["lines"][0].values())[itm],
+    #                                             list(rule["lines"][1].values())[itm],
+    #                                             rule["conclusion_functions"][idx]["extra_parameters"])
+    #         if func_eval is False:
+    #             correctness = False
+    #             break
+    #     return correctness
 
+    def is_relevant(self, rule):
+        # self.last_rule["hypothesis_operators"]
+        relevance = False
+        curr_idx = 0
+        while curr_idx < len(rule["hypothesis_idxes"]):
+            clause_relevance = True
+
+            # AND clause loop.
+            for idx, itm in list(enumerate(rule["hypothesis_idxes"]))[curr_idx:]:
+                func_eval = self.calculate_function(rule["hypothesis_functions"][idx]["func_name"],
+                                                    list(rule["lines"][0].values())[itm],
+                                                    list(rule["lines"][1].values())[itm],
+                                                    rule["hypothesis_functions"][idx]["extra_parameters"])
+
+                curr_idx = idx+1
+
+                if 'NOT' in rule["hypothesis_operators"][idx]:
+                    func_eval = not func_eval
+
+                if func_eval is False:
+                    # clause failed. Advance to next clause (=next OR)
+                    clause_relevance = False
+                    while curr_idx < len(rule["hypothesis_idxes"]) \
+                            and 'OR' not in rule["hypothesis_operators"][curr_idx]:
+                        curr_idx += 1
+
+                    break
+
+                if idx + 1 == len(rule["hypothesis_idxes"]) or 'OR' in rule["hypothesis_operators"][idx + 1]:
+                    # Here always: clause_relevance == True
+                    break
+
+            if clause_relevance:
+                relevance = True
+                break
             # print(list(rule["line"].items())[h])
             # print(hypothesis_to_check)
         return relevance
 
     def is_correct(self, rule):
-        # self.last_rule =
-        # x ={"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 3)),
-        #     "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 3)),
-        #  "hypothesis_functions": [], "conclusion_functions": []}
-        #
-        # y = {"func_name": chosen_func["name"],
-        #      "extra_parameters": [self.generate_random_parameter_of_type(t) for t in chosen_func["param_types"]]}
-        #
-        # # def calculate_function(self, func_name, item1, item2, extra_parameters):
+        # self.last_rule["conclusion_operators"]
+        correctness = False
+        curr_idx = 0
+        while curr_idx < len(rule["conclusion_idxes"]):
+            clause_correctness = True
 
-        correctness = True
-        for idx, itm in enumerate(rule["conclusion_idxes"]):
-            func_eval = self.calculate_function(rule["conclusion_functions"][idx]["func_name"],
-                                                list(rule["lines"][0].values())[itm],
-                                                list(rule["lines"][1].values())[itm],
-                                                rule["conclusion_functions"][idx]["extra_parameters"])
-            if func_eval is False:
-                correctness = False
+            # AND clause loop.
+            for idx, itm in list(enumerate(rule["conclusion_idxes"]))[curr_idx:]:
+                func_eval = self.calculate_function(rule["conclusion_functions"][idx]["func_name"],
+                                                    list(rule["lines"][0].values())[itm],
+                                                    list(rule["lines"][1].values())[itm],
+                                                    rule["conclusion_functions"][idx]["extra_parameters"])
+
+                curr_idx = idx+1
+
+                if 'NOT' in rule["conclusion_operators"][idx]:
+                    func_eval = not func_eval
+
+                if func_eval is False:
+                    # clause failed. Advance to next clause (=next OR)
+                    clause_correctness = False
+                    while curr_idx < len(rule["conclusion_idxes"]) \
+                            and 'OR' not in rule["conclusion_operators"][curr_idx]:
+                        curr_idx += 1
+                    break
+
+                if idx + 1 == len(rule["conclusion_idxes"]) or 'OR' in rule["conclusion_operators"][idx+1]:
+                    # Here always: clause_relevance == True
+                    break
+
+            if clause_correctness:
+                correctness = True
                 break
+
         return correctness
 
     def calculate_function(self, func_name, item1, item2, extra_parameters):
@@ -311,6 +398,8 @@ if __name__ == "__main__":
         rule_score = _rg.calculate_correctness(_rule)
 
         # print(rule_as_string)
+        # print(_rule["hypothesis_operators"])
+        # print(_rule["conclusion_operators"])
         # print(rule_score)
         # print()
 
@@ -318,7 +407,7 @@ if __name__ == "__main__":
         # if 0 < rule_score['relevance'] < 1:
         # if rule_score['correctness'] > 0:
         # if rule_score['relevance'] > 0 and rule_score['correctness'] == rule_score['conclusion_true']:
-        if 0.1 < rule_score['relevance'] < 0.9 and rule_score['correctness'] > rule_score['conclusion_true'] + 0.1:
+        if 0.1 < rule_score['relevance'] < 0.9 and rule_score['correctness'] > rule_score['conclusion_true'] + 0.3:
             print(rule_as_string)
             print(rule_score)
             print()
