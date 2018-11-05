@@ -4,8 +4,10 @@ import copy as cp
 import handle_data.Data_File_Reader as DataReader
 
 _data_file_name = DataReader._main_dir + "data/merged_data.csv"
+# _hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs',
+#                           'director_list']
 _hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs',
-                          'director_list']
+                          'list_of_dmcs_len', 'director_list', 'director_list_len']
 _conclusion_field_list = ['dam_option_awards', 'dam_stock', 'dam_acc', 'dam_abs', 'dam_rel']
 _sample_size = 1000
 

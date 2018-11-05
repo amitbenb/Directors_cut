@@ -39,6 +39,8 @@ def fix_company_data(data):
                     the_dict['list_of_dmcs'].append(key[3:])
                 the_dict.__delitem__(key)
 
+        the_dict['list_of_dmcs_len'] = len(the_dict['list_of_dmcs'])  # for extra length data.
+
         # print("dmcs: %s", str(the_dict['list_of_dmcs']))
         # print(len(the_dict))
         # input()
@@ -62,12 +64,14 @@ def fix_director_data(data):
 def merge_company_director_data(company_data, director_data):
     jdx = 0
     for i in company_data:
+        i["director_list_len"] = ''  # for extra length data.
         i["director_list"] = []
         while jdx < len(director_data) and director_data[jdx]["group_comp_id"] == i["group_comp_id"] and \
                 director_data[jdx]["fyear"] == i["fyear"]:
             i["director_list"].append(director_data[jdx]["dir_id"])
             jdx += 1
         # print(len(i["director_list"]))
+        i["director_list_len"] = len(i["director_list"])  # for extra length data.
     return cp.deepcopy(company_data)
 
 
@@ -84,6 +88,11 @@ def save_data_file(company_and_director_data, filename):
                     for j in value:
                         f.write(str(j).replace("\n", "") + '&')
                     f.write('&')
+
+                    # Add list sizes
+                    # f.write(',')
+                    # f.write(str(len(value)))
+
                 else:
                     f.write(str(value).replace("\n", ""))
                 f.write(',')
@@ -119,9 +128,9 @@ def load_data_file(company_and_director_data, filename):
                         company_and_director_data[-1][itm.replace('\n', '')] = int(parsed_line[idx])
                     elif re.match(r'-?\d+[.]\d+', parsed_line[idx])[0] == parsed_line[idx]:
                         company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
-                    elif re.match(r'-?\d[.]\d+e-\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                    elif re.match(r'-?\d[.]\d+E-\d+', parsed_line[idx])[0] == parsed_line[idx]:
                         company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
-                    elif re.match(r'-?\d[.]\d+e\+\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                    elif re.match(r'-?\d[.]\d+E\+\d+', parsed_line[idx])[0] == parsed_line[idx]:
                         company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
                 elif itm is not '\n':
                     company_and_director_data[-1][itm.replace('\n', '')] = parsed_line[idx]
@@ -151,7 +160,7 @@ if __name__ == "__main__":
 
     _company_data_fixed = _director_data_fixed = None
 
-    # save_data_file(_company_and_director_data, _main_dir + "data/merged_data.csv")
+    save_data_file(_company_and_director_data, _main_dir + "data/merged_data.csv")
     # _company_and_director_data2 = []
     # load_data_file(_company_and_director_data2, _main_dir + "data/merged_data.csv")
 

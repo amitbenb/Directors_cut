@@ -21,6 +21,9 @@ _list_of_method_names = [
 ]
 # _list_of_function_names = []
 
+_sample_size = 1000
+_mini_sample_size = 1000
+
 
 class ConnectionRuleGenerator(RuleGen.RuleGenerator):
     def __init__(self):
@@ -177,7 +180,8 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         if rule == 'last rule':
             rule = self.last_rule
         ret_val = {"correctness": 0.0, "relevance": 0.0, "conclusion_true": 0.0}
-        sample_size = RuleGen._sample_size
+        sample_size = _sample_size
+        # mini_sample_size = _mini_sample_size
         conclusion_true_count = relevance_count = correctness_count = 0.0
 
         for _ in range(sample_size):
@@ -192,7 +196,6 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             else:
                 if self.is_correct(rule):
                     conclusion_true_count += 1
-
 
         ret_val["relevance"] = relevance_count / sample_size
         ret_val["correctness"] = correctness_count / max(relevance_count, 0.1)  # Do not divide by zero!
@@ -264,7 +267,7 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
         :param list1:
         :param list2:
-        :param k: at least ciel(abs(k))+1 members in common
+        :param k: at least ciel(abs(k)) members in common
         :return: True iff there are at least k members in common
         """
         return len(set(list1).intersection(set(list2))) >= np.ceil(abs(k))
