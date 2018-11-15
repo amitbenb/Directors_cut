@@ -12,27 +12,50 @@ import handle_data.RuleGenerator as RuleGen
 
 _list_of_method_names = [
     {'name': 'member_in_common', 'types': [list], 'param_types': []},
-    # {'name': 'k_members_in_common', 'types': [list], 'param_types': [int]},
+    {'name': 'k_members_in_common', 'types': [list], 'param_types': [int]},
     {'name': 'same_as', 'types': [list, int, float, str, type(None)], 'param_types': []},
     # {'name': 'similar_to', 'types': [list, str], 'param_types': [int, float]},
     {'name': 'similar_number_to', 'types': [int, float], 'param_types': [float]},
-    # {'name': 'lesser_equal', 'types': [int, float], 'param_types': [int, float]},
+    {'name': 'lesser_equal', 'types': [int, float], 'param_types': [int, float]},
     # {'name': 'greater_equal', 'types': [int, float], 'param_types': [int, float]},
 ]
 # _list_of_function_names = []
 
 _sample_size = 1000
-_mini_sample_size = 1000
+# _mini_sample_size = 1000
 
 
 class ConnectionRuleGenerator(RuleGen.RuleGenerator):
-    def __init__(self):
+    def __init__(self, constraints=None):
         RuleGen.RuleGenerator.__init__(self, data_file_name=RuleGen._data_file_name)
+        self.constraints = constraints
         pass
 
     def generate_random_rule(self):
         # print(len(self.data))
-        return self.generate_random_rule_for_lines(rn.sample(self.data, 2))
+        # return self.generate_random_rule_for_lines(rn.sample(self.data, 2))
+        return self.generate_random_rule_for_lines(self.sample_random_lines(2))
+
+    def sample_random_lines(self, num_of_lines):
+        while True:
+            ret_val = [rn.choice(self.data)]
+
+            while len(ret_val) < num_of_lines:
+                ret_val += [i for i in [rn.choice(self.data)] if self.constraints_met(ret_val, i)]
+                if rn.random() < 0.001:
+                    # Avoid infinite loop due to no viable choice existing
+                    break
+
+            if len(ret_val) == num_of_lines:
+                return ret_val
+
+    def constraints_met(self, lines, new_line):
+        if self.constraints is None:
+            return True
+        rule = cp.deepcopy(self.constraints)
+        rule["lines"] = lines + [new_line]
+        # print(rule)
+        return self.is_relevant(rule)
 
     def generate_random_rule_for_lines(self, lines):
         # Assumption:
@@ -92,26 +115,31 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         list_of_candidates = [i for i in _list_of_method_names if the_type in i['types']]
         chosen_func = rn.choice(list_of_candidates)
         ret_val = {"func_name": chosen_func["name"],
-                   "extra_parameters": [self.generate_random_parameter_of_type(t) for t in chosen_func["param_types"]]}
+                   "extra_parameters": [self.generate_random_parameter_of_type(ty, chosen_func["name"]) for ty in
+                                        chosen_func["param_types"]]}
         # ret_val = {"func_name": "same_as", "extra_parameters": []}
         # ret_val = {"func_name": rn.choice(_list_of_method_names)['name'], "extra_parameters": ()}
         return ret_val
 
     @staticmethod
-    def generate_random_parameter_of_type(the_type):
+    def generate_random_parameter_of_type(the_type, func_name):
         """
 
         :param the_type: type of number to return (int of float)
         :return: Random number of the_type. biased to return 0/1.0 'default_prob' of the time
         """
         default_prob = 0.5
-        if the_type is int:
-            return 0 if rn.random() < default_prob else rn.randint(-100, 100)
-        elif the_type is float:
-            return 1.0 if rn.random() < default_prob else rn.random() * rn.choice([-2.0, 2.0])
+        if func_name == "similar_number_to":
+            return 1.0 + rn.random()/5
         else:
-            return None
-        return ret_val
+            if the_type is int:
+                return 0 if rn.random() < default_prob else rn.randint(-100, 100)
+            elif the_type is float:
+                return 1.0 if rn.random() < default_prob else rn.random() * rn.choice([-2.0, 2.0])
+            else:
+                return None
+
+        return None
 
     def rule_to_string(self, rule='last rule'):
         if rule == 'last rule':
@@ -125,7 +153,25 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             # print(rule["lines"])
             rule_lines = list([i.items() for i in rule["lines"]])
 
-            string_rule = 'If ('
+            if self.constraints is not None:
+                string_rule += 'Under ('
+                if 'NOT' in self.constraints["hypothesis_operators"][0]:
+                    string_rule += 'NOT '
+
+                for idx, itm in enumerate(self.constraints["hypothesis_idxes"]):
+                    if idx != 0:
+                        # string_rule += ' and '
+                        string_rule += ' ' + self.constraints['hypothesis_operators'][idx] + ' '
+                    # print(itm)
+                    if type(itm) is int:
+                        self.constraints['lines'] = rule['lines']
+                        string_rule += (self.rule_element_to_string(self.constraints, idx, part='hypothesis'))
+                    else:
+                        print("What?!? type of item is not an int!")
+                        print("rule_to_string() constraint loop.")
+                string_rule += ')\n'
+
+            string_rule += 'If ('
 
             if 'NOT' in rule["hypothesis_operators"][0]:
                 string_rule += 'NOT '
@@ -196,7 +242,8 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         conclusion_true_count = relevance_count = correctness_count = 0.0
 
         for _ in range(sample_size):
-            rule["lines"] = rn.sample(self.data, 2)
+            # rule["lines"] = rn.sample(self.data, 2)
+            rule["lines"] = self.sample_random_lines(2)
             # print(line)
             # print(self.rule_to_string(rule))
             if self.is_relevant(rule):
@@ -251,6 +298,11 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
     #     return correctness
 
     def is_relevant(self, rule):
+        """
+
+        :param rule: Rule to check
+        :return: True if relevant for rule["lines"][0:2]
+        """
         # self.last_rule["hypothesis_operators"]
         relevance = False
         curr_idx = 0
@@ -258,6 +310,7 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             clause_relevance = True
 
             # AND clause loop.
+            # print(rule["lines"])
             for idx, itm in list(enumerate(rule["hypothesis_idxes"]))[curr_idx:]:
                 func_eval = self.calculate_function(rule["hypothesis_functions"][idx]["func_name"],
                                                     list(rule["lines"][0].values())[itm],
@@ -378,38 +431,68 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             return True
         if set([int, float]) or set([item1, item2]) != set([int, float]):
             return False
-        if 0 in [item1, item2]:
+        if 0 in [item1, item2] or item1*item2 < 0:
             return False
-        factor = (np.abs(multiplicative_factor) - int(np.abs(multiplicative_factor))) / 5  # Max of 0.2
-        return np.max(item1, item2) - np.min(item1, item2) < np.max(np.abs(item1), np.abs(item2)) * factor
+        # factor = (np.abs(multiplicative_factor) - int(np.abs(multiplicative_factor))) / 5  # Max of 0.2
+        # return np.max(item1, item2) - np.min(item1, item2) < np.max(np.abs(item1), np.abs(item2)) * factor
+        factor = multiplicative_factor
+        item_max = max(np.abs(item1), np.abs(item2))
+        item_min = min(np.abs(item1), np.abs(item2))
+        return item_max < item_min * factor
 
 
 if __name__ == "__main__":
-    _rg = ConnectionRuleGenerator()
+
+    # {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(3, 4)),
+    #  "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 2)),
+    #  "hypothesis_functions": [], "conclusion_functions": [],
+    #  "hypothesis_operators": [], "conclusion_operators": []}
+
+    # {"func_name": chosen_func["name"],
+    #  "extra_parameters": [self.generate_random_parameter_of_type(ty, chosen_func["name"]) for ty in
+    #                       chosen_func["param_types"]]}
+
+    # Same company different year.
+    constraints1 = {"hypothesis_idxes": [16, 0],
+                    "hypothesis_functions": [{"func_name": 'same_as', "extra_parameters": []},
+                                             {"func_name": 'same_as', "extra_parameters": []}],
+                    "hypothesis_operators": ['AND', 'AND NOT']}
+    constraints2 = {"hypothesis_idxes": [6],
+                    "hypothesis_functions": [{"func_name": 'lesser_equal', "extra_parameters": [0, 1.0]}],
+                    "hypothesis_operators": ['AND']}
+    constraints3 = {"hypothesis_idxes": [20],
+                    "hypothesis_functions": [{"func_name": 'member_in_common', "extra_parameters": []}],
+                    "hypothesis_operators": ['AND']}
+    _rg = ConnectionRuleGenerator(constraints=constraints3)
+    # _rg = ConnectionRuleGenerator(constraints=None)
 
     _t0 = t.time()
 
     for _ in range(1000):
 
         _rule = _rg.generate_random_rule()
+        # print(_rule)
+        # print(list(_rule['lines'][0].keys()))
+        # print(list(_rule['lines'][0].keys()).index('director_list'))
 
-        rule_as_string = _rg.rule_to_string(_rule)
+        _rule_as_string = _rg.rule_to_string(_rule)
         # print(rule_as_string)
-        rule_score = _rg.calculate_correctness(_rule)
 
-        # print(rule_as_string)
-        # print(_rule["hypothesis_operators"])
-        # print(_rule["conclusion_operators"])
-        # print(rule_score)
+        _rule_score = _rg.calculate_correctness(_rule)
+
+        # print(_rule_as_string)
+        # # print(_rule["hypothesis_operators"])
+        # # print(_rule["conclusion_operators"])
+        # print(_rule_score)
         # print()
 
-        # if rule_score['relevance'] > 0:
-        # if 0 < rule_score['relevance'] < 1:
-        # if rule_score['correctness'] > 0:
-        # if rule_score['relevance'] > 0 and rule_score['correctness'] == rule_score['conclusion_true']:
-        if 0.1 < rule_score['relevance'] < 0.9 and rule_score['correctness'] > rule_score['conclusion_true'] + 0.3:
-            print(rule_as_string)
-            print(rule_score)
+        # if _rule_score['relevance'] > 0:
+        # if 0 < _rule_score['relevance'] < 1:
+        # if _rule_score['correctness'] > 0:
+        # _if _rule_score['relevance'] > 0 and _rule_score['correctness'] > _rule_score['conclusion_true']:
+        if 0.1 < _rule_score['relevance'] < 0.9 and _rule_score['correctness'] > _rule_score['conclusion_true'] + 0.2:
+            print(_rule_as_string)
+            print(_rule_score)
             print()
 
     _t1 = t.time()
