@@ -18,6 +18,8 @@ _list_of_method_names = [
     {'name': 'similar_number_to', 'types': [int, float], 'param_types': [float]},
     {'name': 'lesser_equal', 'types': [int, float], 'param_types': [int, float]},
     # {'name': 'greater_equal', 'types': [int, float], 'param_types': [int, float]},
+    {'name': 'both_lesser_equal', 'types': [int, float], 'param_types': [float]},
+    {'name': 'both_greater_equal', 'types': [int, float], 'param_types': [float]},
 ]
 # _list_of_function_names = []
 
@@ -61,22 +63,20 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         # Assumption:
         #   Indexes are the same for all lines.
         #   Field names are the same for all lines.
-        lengths = [len(i) for i in lines]
-        indexes = list(range(lengths[0]))
+        # indexes = self.get_lengths_indexes_from_lines(lines)
+        hypothesis_indexes, conclusion_indexes = self.get_lists_of_indexes_from_lines(lines)
 
-        # hypothesis_indexes = [i for i in cp.deepcopy(indexes) if not (list(line.items())[i][0]).startswith('dam')]
-        # conclusion_indexes = [i for i in cp.deepcopy(indexes) if (list(line.items())[i][0]).startswith('dam')]
-        hypothesis_indexes = [i for i in cp.deepcopy(indexes) if
-                              (list(lines[0].items())[i][0]) in RuleGen._hypothesis_field_list]
-        conclusion_indexes = [i for i in cp.deepcopy(indexes) if
-                              (list(lines[0].items())[i][0]) in RuleGen._conclusion_field_list]
+        # hypothesis_indexes = [i for i in cp.deepcopy(indexes) if
+        #                       (list(lines[0].items())[i][0]) in RuleGen._hypothesis_field_list]
+        # conclusion_indexes = [i for i in cp.deepcopy(indexes) if
+        #                       (list(lines[0].items())[i][0]) in RuleGen._conclusion_field_list]
 
         # print(hypothesis_indexes)
         # print(conclusion_indexes)
 
 
         # print(lines[0])
-        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(3, 4)),
+        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 2)),
                           "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 2)),
                           "hypothesis_functions": [], "conclusion_functions": [],
                           "hypothesis_operators": [], "conclusion_operators": []}
@@ -86,17 +86,15 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         # Choose rule functions
         for idx, itm in enumerate(self.last_rule["hypothesis_idxes"]):
             self.last_rule["hypothesis_functions"].append(
-                self.generate_rule_function(type(list(lines[0].values())[itm]),
-                                            type(list(lines[1].values())[itm])))
+                self.generate_rule_function(list(lines[0].values())[itm],
+                                            list(lines[1].values())[itm]))
             self.last_rule["hypothesis_operators"].append(rn.choice(['AND', 'OR', 'AND NOT', 'OR NOT']))
-            pass
 
         for idx, itm in enumerate(self.last_rule["conclusion_idxes"]):
             self.last_rule["conclusion_functions"].append(
-                self.generate_rule_function(type(list(lines[0].values())[itm]),
-                                            type(list(lines[1].values())[itm])))
+                self.generate_rule_function(list(lines[0].values())[itm],
+                                            list(lines[1].values())[itm]))
             self.last_rule["conclusion_operators"].append(rn.choice(['AND', 'OR', 'AND NOT']))
-            pass
 
         # # Allow for list membership rules.
         # for idx, itm in enumerate(self.last_rule["hypothesis"]):
@@ -109,28 +107,150 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
         return cp.deepcopy(self.last_rule)
 
-    def generate_rule_function(self, the_type1, the_type2):
+    # @staticmethod
+    # def get_lengths_indexes_from_lines(lines):
+    #     lengths = [len(i) for i in lines]
+    #     indexes = list(range(lengths[0]))
+    #     return indexes
+
+    @staticmethod
+    def get_lists_of_indexes_from_lines(lines):
+        lengths = [len(i) for i in lines]
+        indexes = list(range(lengths[0]))
+        hypothesis_indexes = [i for i in cp.deepcopy(indexes) if
+                              (list(lines[0].items())[i][0]) in RuleGen._hypothesis_field_list]
+        conclusion_indexes = [i for i in cp.deepcopy(indexes) if
+                              (list(lines[0].items())[i][0]) in RuleGen._conclusion_field_list]
+        return hypothesis_indexes, conclusion_indexes
+
+    def add_element_to_rule(self, lines, hyp_or_conc, rule=None):
+        """
+        Currently for external use. Although can be used by generate_random_rule_for_lines after fixing (hopefully)
+
+        :param lines: Data lines
+        :param hyp_or_conc: Where in the rule to add the element: either 'hypothesis' or 'conclusion'
+        :param rule:
+        :return:
+        """
+        if rule is None:
+            rule = self.last_rule
+        # indexes = self.get_lengths_indexes_from_lines(lines)
+        hypothesis_indexes, conclusion_indexes = self.get_lists_of_indexes_from_lines(lines)
+
+        my_indexes = hypothesis_indexes if hyp_or_conc == 'hypothesis' else conclusion_indexes
+        
+        rule[hyp_or_conc + '_idxes'].append(rn.choice(my_indexes))
+        rule[hyp_or_conc + "_functions"].append(
+            self.generate_rule_function(list(lines[0].values())[rule[hyp_or_conc + '_idxes'][-1]],
+                                        list(lines[1].values())[rule[hyp_or_conc + '_idxes'][-1]]))
+        rule[hyp_or_conc + "_operators"].append(rn.choice(['AND', 'OR', 'AND NOT', 'OR NOT']))
+
+    def swap_element_in_rule(self, lines, hyp_or_conc, element_idx, rule=None):
+        """
+        Currently for external use. Although can be used by generate_random_rule_for_lines after fixing (hopefully)
+
+        :param lines: Data lines.
+        :param hyp_or_conc: Where to in the rule swap the element: either 'hypothesis' or 'conclusion'.
+        :param element_idx: Index of element to be swapped.
+        :param rule:
+        :return:
+        """
+        # indexes = self.get_lengths_indexes_from_lines(lines)
+        hypothesis_indexes, conclusion_indexes = self.get_lists_of_indexes_from_lines(lines)
+        my_indexes = hypothesis_indexes if hyp_or_conc == 'hypothesis' else conclusion_indexes
+
+        rule[hyp_or_conc + '_idxes'][element_idx] = rn.choice(my_indexes)
+        rule[hyp_or_conc + "_functions"][element_idx] = self.generate_rule_function(
+            list(lines[0].values())[rule[hyp_or_conc + '_idxes'][element_idx]],
+            list(lines[1].values())[rule[hyp_or_conc + '_idxes'][element_idx]])
+        # Should I swap operator as well when swapping rule?
+        # rule[hyp_or_conc + "_operators"][element_idx] = rn.choice(['AND', 'OR', 'AND NOT', 'OR NOT'])
+
+    def swap_operator_in_rule(self, lines, hyp_or_conc, operator_idx, rule=None):
+        """
+        Currently for external use. Although can be used by generate_random_rule_for_lines after fixing (hopefully)
+
+        :param lines: Data lines.
+        :param hyp_or_conc: Where in the rule swap in the operator: either 'hypothesis' or 'conclusion'.
+        :param operator_idx: Index of operator to be swapped.
+        :param rule:
+        :return:
+        """
+        # indexes = self.get_lengths_indexes_from_lines(lines)
+        hypothesis_indexes, conclusion_indexes = self.get_lists_of_indexes_from_lines(lines)
+        my_indexes = hypothesis_indexes if hyp_or_conc == 'hypothesis' else conclusion_indexes
+
+        rule[hyp_or_conc + "_operators"][operator_idx] = rn.choice(['AND', 'OR', 'AND NOT', 'OR NOT'])
+
+    def tweak_element_in_rule(self, lines, hyp_or_conc, element_idx, rule=None):
+        """
+        Currently for external use. Although can be used by generate_random_rule_for_lines after fixing (hopefully)
+
+        :param lines: Data lines.
+        :param hyp_or_conc: Where to in the rule tweak in the element: either 'hypothesis' or 'conclusion'.
+        :param element_idx: Index of element to be swapped.
+        :param rule:
+        :return:
+        """
+        # indexes = self.get_lengths_indexes_from_lines(lines)
+        hypothesis_indexes, conclusion_indexes = self.get_lists_of_indexes_from_lines(lines)
+        my_indexes = hypothesis_indexes if hyp_or_conc == 'hypothesis' else conclusion_indexes
+
+        # {"func_name": chosen_func["name"],
+        #  "extra_parameters": [self.generate_random_parameter_of_type(ty, chosen_func["name"]) for ty in
+        #                       chosen_func["param_types"]]}
+        func_arguments = rule[hyp_or_conc + "_functions"][element_idx]["extra_parameters"]
+        if len(func_arguments) > 0:
+            chosen_param_idx = rn.choice(range(len(func_arguments)))
+            func_arguments[chosen_param_idx] = self.minor_change_in_value(func_arguments[chosen_param_idx])
+
+    @staticmethod
+    def minor_change_in_value(val):
+        factor = rn.random()/5 + 0.9  #  in [0.9, 1.1)
+        ret_val = val * factor
+        if type(float):
+            pass
+        elif type(int):
+            ret_val = int(ret_val)
+            if ret_val == val:
+                ret_val += rn.choice([-1, 1])
+        else:
+            print("Something bad has happened in ConnectionRuleGenerator.minor_change_in_value")
+            raise RuntimeError
+        return ret_val
+
+    def generate_rule_function(self, item1, item2):
+        the_type1, the_type2 = type(item1), type(item2)
         the_type = the_type1 if the_type1 == the_type2 else type(None)
 
         list_of_candidates = [i for i in _list_of_method_names if the_type in i['types']]
         chosen_func = rn.choice(list_of_candidates)
         ret_val = {"func_name": chosen_func["name"],
-                   "extra_parameters": [self.generate_random_parameter_of_type(ty, chosen_func["name"]) for ty in
-                                        chosen_func["param_types"]]}
+                   "extra_parameters": [self.generate_random_parameter_of_type(ty, [item1, item2], chosen_func["name"])
+                                        for ty in chosen_func["param_types"]]}
         # ret_val = {"func_name": "same_as", "extra_parameters": []}
         # ret_val = {"func_name": rn.choice(_list_of_method_names)['name'], "extra_parameters": ()}
         return ret_val
 
     @staticmethod
-    def generate_random_parameter_of_type(the_type, func_name):
+    def generate_random_parameter_of_type(the_type, items, func_name):
         """
 
         :param the_type: type of number to return (int of float)
+        :param items: In some cases we need item values
+        :param func_name:
         :return: Random number of the_type. biased to return 0/1.0 'default_prob' of the time
+        """
+        """
+
         """
         default_prob = 0.5
         if func_name == "similar_number_to":
             return 1.0 + rn.random()/5
+        elif func_name == "both_lesser_equal":
+            return float(min(items))
+        elif func_name == "both_greater_equal":
+            return float(max(items))
         else:
             if the_type is int:
                 return 0 if rn.random() < default_prob else rn.randint(-100, 100)
@@ -394,6 +514,10 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         elif func_name == 'similar_number_to':
             # TODO This is a patch. Need to fix this
             return self.similar_number_to(item1, item2, extra_parameters[0])
+        elif func_name == 'both_lesser_equal':
+            return self.both_lesser_equal(item1, item2, extra_parameters[0])
+        elif func_name == 'both_greater_equal':
+            return self.both_greater_equal(item1, item2, extra_parameters[0])
         else:
             return "Method calculate_function could not identify function"
 
@@ -410,6 +534,10 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         :param k: at least ciel(abs(k)) members in common
         :return: True iff there are at least k members in common
         """
+        if type(list1) is not list or type(list2) is not list:
+            print(type(list1), type(list2))
+            print(list1)
+            print(list2)
         return len(set(list1).intersection(set(list2))) >= np.ceil(abs(k))
 
     @staticmethod
@@ -440,6 +568,18 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         item_min = min(np.abs(item1), np.abs(item2))
         return item_max < item_min * factor
 
+    @staticmethod
+    def both_lesser_equal(item1, item2, lower_bound):
+        if type(item1) not in [int, float] or type(item2) not in [int, float]:
+            return False
+        return item1 <= lower_bound and item2 <= lower_bound
+
+    @staticmethod
+    def both_greater_equal(item1, item2, lower_bound):
+        if type(item1) not in [int, float] or type(item2) not in [int, float]:
+            return False
+        return item1 >= lower_bound and item2 >= lower_bound
+
 
 if __name__ == "__main__":
 
@@ -468,10 +608,11 @@ if __name__ == "__main__":
 
     _t0 = t.time()
 
-    for _ in range(1000):
+    for _ in range(1):
 
         _rule = _rg.generate_random_rule()
-        # print(_rule)
+
+        # print(_rule.keys())
         # print(list(_rule['lines'][0].keys()))
         # print(list(_rule['lines'][0].keys()).index('director_list'))
 

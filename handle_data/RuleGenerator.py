@@ -9,7 +9,7 @@ _data_file_name = DataReader._main_dir + "data/merged_data.csv"
 _hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs',
                           'list_of_dmcs_len', 'director_list', 'director_list_len']
 _conclusion_field_list = ['dam_option_awards', 'dam_stock', 'dam_acc', 'dam_abs', 'dam_rel']
-_sample_size = 1000
+_sample_size = 1000  # This isn't used in derived classes
 
 
 class RuleGenerator:
