@@ -13,11 +13,13 @@ class RuleIndividual(Individual):
     generator: CRGen.ConnectionRuleGenerator
     rule: dict
 
-    def __init__(self, rule, generator):
+    def __init__(self, rule, generator, hypothesis_mutable=True, conclusion_mutable=True):
         self.rule = rule
         self.generator = generator
         self.scores = None
         self.fitness = 0.0
+        self.hypothesis_mutable = hypothesis_mutable
+        self.conclusion_mutable = conclusion_mutable
 
     def self_replicate(self):
         return RuleIndividual(cp.deepcopy(self.rule))
@@ -47,8 +49,8 @@ class RuleIndividual(Individual):
         pass
 
     def drop_random_element_from_rule(self):
-        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 1 else False
-        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 1 else False
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
         choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
             'hypothesis' if not conclusion_flag else rn.choice(['hypothesis', 'conclusion'])))
         if choice is not None:
@@ -64,24 +66,34 @@ class RuleIndividual(Individual):
         self.generator.add_element_to_rule(lines, choice, self.rule)
 
     def swap_random_element_in_rule(self):
-        choice = 'conclusion' if rn.random() < 0.5 else 'hypothesis'
-        lines = self.generator.sample_random_lines(2)
-        element_idx = rn.randint(0, len(self.rule[choice + '_idxes'])-1)
-        self.generator.swap_element_in_rule(lines, choice, element_idx, self.rule)
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
+            'hypothesis' if not conclusion_flag else ('conclusion' if rn.random() < 0.5 else 'hypothesis')))
+        if choice is not None:
+            lines = self.generator.sample_random_lines(2)
+            element_idx = rn.randint(0, len(self.rule[choice + '_idxes']) - 1)
+            self.generator.swap_element_in_rule(lines, choice, element_idx, self.rule)
 
     def swap_rule_operator(self):
-        choice = 'conclusion' if rn.random() < 0.5 else 'hypothesis'
-        lines = self.generator.sample_random_lines(2)
-        operator_idx = rn.randint(0, len(self.rule[choice + '_idxes'])-1)
-        self.generator.swap_operator_in_rule(lines, choice, operator_idx, self.rule)
-        pass
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
+            'hypothesis' if not conclusion_flag else ('conclusion' if rn.random() < 0.5 else 'hypothesis')))
+        if choice is not None:
+            lines = self.generator.sample_random_lines(2)
+            operator_idx = rn.randint(0, len(self.rule[choice + '_idxes']) - 1)
+            self.generator.swap_operator_in_rule(lines, choice, operator_idx, self.rule)
 
     def tweak_rule_element(self):
-        choice = 'conclusion' if rn.random() < 0.5 else 'hypothesis'
-        lines = self.generator.sample_random_lines(2)
-        element_idx = rn.randint(0, len(self.rule[choice + '_idxes'])-1)
-        self.generator.tweak_element_in_rule(lines, choice, element_idx, self.rule)
-        pass
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
+            'hypothesis' if not conclusion_flag else ('conclusion' if rn.random() < 0.5 else 'hypothesis')))
+        if choice is not None:
+            lines = self.generator.sample_random_lines(2)
+            element_idx = rn.randint(0, len(self.rule[choice + '_idxes']) - 1)
+            self.generator.tweak_element_in_rule(lines, choice, element_idx, self.rule)
 
     def calculate_fitness(self):
         # print("fitness")
@@ -91,7 +103,7 @@ class RuleIndividual(Individual):
         # self.fitness = 0 if conclusion_true == 0 else correctness / conclusion_true
         # self.fitness = 1 + (correctness - conclusion_true) * relevance * (1 - relevance)
         # self.fitness = 1 + (correctness - conclusion_true) * 2 * min(relevance, (1 - relevance))
-        self.fitness = 1 + (correctness - conclusion_true) * 7 * min(1.0/7.0, relevance, (1 - relevance))
+        self.fitness = 1 + (correctness - conclusion_true) * 7 * min(1.0 / 7.0, relevance, (1 - relevance))
         # self.fitness = 1 + rn.random()
         return self.fitness
 
@@ -133,6 +145,5 @@ class FitnessEvaluationPhase(Evolution.EvoPhase):
         best_ind = max([ind for ind in population], key=lambda x: self.fitness_getter_function(x))
         print(best_ind.rule_to_string())
         print(best_ind.scores)
-
 
         return population

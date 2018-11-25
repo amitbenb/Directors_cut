@@ -5,7 +5,7 @@ import numpy as np
 
 import re
 
-import handle_data.Data_File_Reader as DataReader
+# import handle_data.Data_File_Reader as DataReader
 import handle_data.RuleGenerator as RuleGen
 
 # re.match(r'\d+[.]\d+','12.34')[0]=='12.34'
@@ -76,8 +76,8 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
 
         # print(lines[0])
-        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 2)),
-                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 2)),
+        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(0, 0)),
+                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 1)),
                           "hypothesis_functions": [], "conclusion_functions": [],
                           "hypothesis_operators": [], "conclusion_operators": []}
 
@@ -293,35 +293,38 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
             string_rule += 'If ('
 
-            if 'NOT' in rule["hypothesis_operators"][0]:
-                string_rule += 'NOT '
+            if len(rule["hypothesis_idxes"]) != 0:
+                if 'NOT' in rule["hypothesis_operators"][0]:
+                    string_rule += 'NOT '
 
-            for idx, itm in enumerate(rule["hypothesis_idxes"]):
-                if idx != 0:
-                    # string_rule += ' and '
-                    string_rule += ' ' + rule['hypothesis_operators'][idx] + ' '
-                # print(itm)
-                if type(itm) is int:
-                    string_rule += (self.rule_element_to_string(rule, idx, part='hypothesis'))
-                else:
-                    print("What?!? type of item is not an int!")
-                    print("rule_to_string() hypothesis loop.")
+                for idx, itm in enumerate(rule["hypothesis_idxes"]):
+                    if idx != 0:
+                        # string_rule += ' and '
+                        string_rule += ' ' + rule['hypothesis_operators'][idx] + ' '
+                    # print(itm)
+                    if type(itm) is int:
+                        string_rule += (self.rule_element_to_string(rule, idx, part='hypothesis'))
+                    else:
+                        print("What?!? type of item is not an int!")
+                        print("rule_to_string() hypothesis loop.")
 
             string_rule += ')\nThen ('
-            if 'NOT' in rule["conclusion_operators"][0]:
-                string_rule += 'NOT '
 
-            # string_rule += (self.rule_element_to_string(rule_line[rule["conclusion"][0]]))
+            if len(rule["conclusion_idxes"]) != 0:
+                if 'NOT' in rule["conclusion_operators"][0]:
+                    string_rule += 'NOT '
 
-            for idx, itm in enumerate(rule["conclusion_idxes"]):
-                if idx != 0:
-                    # string_rule += ' and '
-                    string_rule += ' ' + rule['conclusion_operators'][idx] + ' '
-                if type(itm) is int:
-                    string_rule += (self.rule_element_to_string(rule, idx, part='conclusion'))
-                else:
-                    print("What?!? type of item is not an int!")
-                    print("rule_to_string() hypothesis loop.")
+                # string_rule += (self.rule_element_to_string(rule_line[rule["conclusion"][0]]))
+
+                for idx, itm in enumerate(rule["conclusion_idxes"]):
+                    if idx != 0:
+                        # string_rule += ' and '
+                        string_rule += ' ' + rule['conclusion_operators'][idx] + ' '
+                    if type(itm) is int:
+                        string_rule += (self.rule_element_to_string(rule, idx, part='conclusion'))
+                    else:
+                        print("What?!? type of item is not an int!")
+                        print("rule_to_string() hypothesis loop.")
 
             # string_rule += ')\n'
             string_rule += ')'
@@ -460,6 +463,11 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
                 break
             # print(list(rule["line"].items())[h])
             # print(hypothesis_to_check)
+
+        if len(rule["hypothesis_idxes"]) == 0:
+            # Empty hypothesis rules are always relevant
+            relevance = True
+
         return relevance
 
     def is_correct(self, rule):
@@ -496,6 +504,10 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             if clause_correctness:
                 correctness = True
                 break
+
+        if len(rule["conclusion_idxes"]) == 0:
+            # Empty conclusion rules are always correct
+            correctness = True
 
         return correctness
 
@@ -580,8 +592,14 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             return False
         return item1 >= lower_bound and item2 >= lower_bound
 
+    def get_indexes_for_keys(self, keys):
+        rule = self.generate_random_rule()
+        return [list(rule['lines'][0].keys()).index(key) for key in keys]
+
 
 if __name__ == "__main__":
+
+    import handle_data.ConnectionRuleConstants as CRC
 
     # {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(3, 4)),
     #  "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 2)),
@@ -593,17 +611,7 @@ if __name__ == "__main__":
     #                       chosen_func["param_types"]]}
 
     # Same company different year.
-    constraints1 = {"hypothesis_idxes": [16, 0],
-                    "hypothesis_functions": [{"func_name": 'same_as', "extra_parameters": []},
-                                             {"func_name": 'same_as', "extra_parameters": []}],
-                    "hypothesis_operators": ['AND', 'AND NOT']}
-    constraints2 = {"hypothesis_idxes": [6],
-                    "hypothesis_functions": [{"func_name": 'lesser_equal', "extra_parameters": [0, 1.0]}],
-                    "hypothesis_operators": ['AND']}
-    constraints3 = {"hypothesis_idxes": [20],
-                    "hypothesis_functions": [{"func_name": 'member_in_common', "extra_parameters": []}],
-                    "hypothesis_operators": ['AND']}
-    _rg = ConnectionRuleGenerator(constraints=constraints3)
+    _rg = ConnectionRuleGenerator(constraints=CRC.constraints3)
     # _rg = ConnectionRuleGenerator(constraints=None)
 
     _t0 = t.time()
@@ -615,6 +623,7 @@ if __name__ == "__main__":
         # print(_rule.keys())
         # print(list(_rule['lines'][0].keys()))
         # print(list(_rule['lines'][0].keys()).index('director_list'))
+        # print(list(_rule['lines'][0].keys())[16])
 
         _rule_as_string = _rg.rule_to_string(_rule)
         # print(rule_as_string)

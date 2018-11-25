@@ -11,8 +11,8 @@ import evo_rule.RuleIndividual as RuleInd
 
 if __name__ == "__main__":
     Evolution._debug_output_flag = True
-    num_of_generations = 100
-    pop_size = 100
+    num_of_generations = 30
+    pop_size = 30
     # genome_len = 20
     rg = CRGen.ConnectionRuleGenerator()
     inds = [RuleInd.RuleIndividual(rg.generate_random_rule(), rg) for _ in range(pop_size)]
