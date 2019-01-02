@@ -10,12 +10,27 @@ from handle_data import ConnectionRuleGenerator as CRGen
 import evo_rule.RuleIndividual as RuleInd
 
 if __name__ == "__main__":
+    import handle_data.ConnectionRuleConstants as CRC
+
     Evolution._debug_output_flag = True
-    num_of_generations = 30
-    pop_size = 30
+    num_of_generations = 120
+    pop_size = 80
     # genome_len = 20
-    rg = CRGen.ConnectionRuleGenerator()
-    inds = [RuleInd.RuleIndividual(rg.generate_random_rule(), rg) for _ in range(pop_size)]
+
+    # rg = CRGen.ConnectionRuleGenerator(constraints=None)
+
+    # rg = CRGen.ConnectionRuleGenerator(constraints=None, unchanging_rule=CRC.unchanging_rule3,
+    #                                    line_sampler=None, hash_key="director_list")
+
+    rg = CRGen.ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule3,
+                                       line_sampler=CRGen.hash_same_sampler, hash_key="director_list")
+
+    # inds = [RuleInd.RuleIndividual(rg.generate_random_rule(), rg) for _ in range(pop_size)]
+
+    inds = [RuleInd.RuleIndividual(rg.generate_random_rule(),
+                                   rg, hypothesis_mutable=True,
+                                   conclusion_mutable=False) for _ in range(pop_size)]
+
     pop = PopContainers.SimplePopulationWithElite(inds)
     # pop.update_pop(inds)
 

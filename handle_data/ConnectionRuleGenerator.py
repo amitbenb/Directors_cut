@@ -7,6 +7,7 @@ import re
 
 # import handle_data.Data_File_Reader as DataReader
 import handle_data.RuleGenerator as RuleGen
+import handle_data.ListMembershipHashTable as HTable
 
 # re.match(r'\d+[.]\d+','12.34')[0]=='12.34'
 
@@ -27,23 +28,78 @@ _sample_size = 1000
 # _mini_sample_size = 1000
 
 
+def random_sampler(generator, num_of_lines):
+    return generator.sample_random_lines(num_of_lines)
+
+
+def hash_same_sampler(generator, num_of_lines):
+    return generator.sample_hash_shared_member_lines(num_of_lines)
+
+
 class ConnectionRuleGenerator(RuleGen.RuleGenerator):
-    def __init__(self, constraints=None):
+    def __init__(self, constraints=None, unchanging_rule=None, line_sampler=None, hash_key=None):
         RuleGen.RuleGenerator.__init__(self, data_file_name=RuleGen._data_file_name)
+        # if hash_key is not None:
+        #     print(self.data[0][hash_key])
+        #     input()
         self.constraints = constraints
+        self.unchanging_rule = unchanging_rule
+        self.line_sampler = line_sampler if line_sampler is not None else random_sampler
+        self.hash_key = hash_key
+        self.hash_table = None if hash_key is None else HTable.ListMembershipHashTable()
+        if self.hash_table is not None:
+            self.fill_up_table()
         pass
 
     def generate_random_rule(self):
         # print(len(self.data))
         # return self.generate_random_rule_for_lines(rn.sample(self.data, 2))
-        return self.generate_random_rule_for_lines(self.sample_random_lines(2))
+        # return self.generate_random_rule_for_lines(self.sample_random_lines(2))
+        return self.generate_random_rule_for_lines(self.line_sampler(self, 2))
 
     def sample_random_lines(self, num_of_lines):
+        # print("sample_random_lines")
         while True:
             ret_val = [rn.choice(self.data)]
 
             while len(ret_val) < num_of_lines:
-                ret_val += [i for i in [rn.choice(self.data)] if self.constraints_met(ret_val, i)]
+                # ret_val += [i for i in [rn.choice(self.data)] if self.constraints_met(ret_val, i)]
+                ret_val += [i for i in [rn.choice(self.data)] if self.constraints_met(ret_val, i) and i not in ret_val]
+                if rn.random() < 0.001:
+                    # Avoid infinite loop due to no viable choice existing
+                    break
+
+            if len(ret_val) == num_of_lines:
+                return ret_val
+
+    def fill_up_table(self):
+        """
+        This method assumes line[self.hash_key] contains a list of keys for hash table and proceeds to insert the line
+        into the hash table for each of these keys
+
+        """
+        for line in self.data:
+            my_list_of_keys = line[self.hash_key]
+            for key in my_list_of_keys:
+                self.hash_table.insert(line, key)
+
+    def sample_hash_shared_member_lines(self, num_of_lines):
+        while True:
+            ret_val = [rn.choice(self.data)]
+            keys = ret_val[0][self.hash_key]  # These are the keys one of which must be shared.
+
+            while len(ret_val) < num_of_lines:
+                # All lines that share a key with first line.
+                # candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key)]
+                candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key) if
+                                   line not in ret_val]
+                if len(candidate_lines) == 0:
+                    break
+
+                # print(keys[0])
+                # print(self.hash_table.search(keys[0]))
+
+                ret_val += [i for i in [rn.choice(candidate_lines)] if self.constraints_met(ret_val, i)]
                 if rn.random() < 0.001:
                     # Avoid infinite loop due to no viable choice existing
                     break
@@ -74,10 +130,9 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         # print(hypothesis_indexes)
         # print(conclusion_indexes)
 
-
         # print(lines[0])
-        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(0, 0)),
-                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 1)),
+        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 3)),
+                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(0, 0)),
                           "hypothesis_functions": [], "conclusion_functions": [],
                           "hypothesis_operators": [], "conclusion_operators": []}
 
@@ -138,7 +193,7 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         hypothesis_indexes, conclusion_indexes = self.get_lists_of_indexes_from_lines(lines)
 
         my_indexes = hypothesis_indexes if hyp_or_conc == 'hypothesis' else conclusion_indexes
-        
+
         rule[hyp_or_conc + '_idxes'].append(rn.choice(my_indexes))
         rule[hyp_or_conc + "_functions"].append(
             self.generate_rule_function(list(lines[0].values())[rule[hyp_or_conc + '_idxes'][-1]],
@@ -273,6 +328,10 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             # print(rule["lines"])
             rule_lines = list([i.items() for i in rule["lines"]])
 
+            # Ugly but necessary to have lines there:
+            if self.unchanging_rule is not None:
+                self.unchanging_rule["lines"] = rule["lines"]
+
             if self.constraints is not None:
                 string_rule += 'Under ('
                 if 'NOT' in self.constraints["hypothesis_operators"][0]:
@@ -293,6 +352,24 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
             string_rule += 'If ('
 
+            if self.unchanging_rule is not None and len(self.unchanging_rule["hypothesis_idxes"]) != 0:
+                if 'NOT' in self.unchanging_rule["hypothesis_operators"][0]:
+                    string_rule += 'NOT '
+
+                for idx, itm in enumerate(self.unchanging_rule["hypothesis_idxes"]):
+                    if idx != 0:
+                        # string_rule += ' and '
+                        string_rule += ' ' + self.unchanging_rule['hypothesis_operators'][idx] + ' '
+                    # print(itm)
+                    if type(itm) is int:
+                        string_rule += (self.rule_element_to_string(self.unchanging_rule, idx, part='hypothesis'))
+                    else:
+                        print("What?!? type of item is not an int!")
+                        print("rule_to_string() const hypothesis loop.")
+
+                    if len(rule["hypothesis_idxes"]) != 0:
+                        string_rule += ')\nAND if also ('
+
             if len(rule["hypothesis_idxes"]) != 0:
                 if 'NOT' in rule["hypothesis_operators"][0]:
                     string_rule += 'NOT '
@@ -309,6 +386,23 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
                         print("rule_to_string() hypothesis loop.")
 
             string_rule += ')\nThen ('
+
+            if self.unchanging_rule is not None and len(self.unchanging_rule["conclusion_idxes"]) != 0:
+                if 'NOT' in self.unchanging_rule["conclusion_operators"][0]:
+                    string_rule += 'NOT '
+
+                for idx, itm in enumerate(self.unchanging_rule["conclusion_idxes"]):
+                    if idx != 0:
+                        # string_rule += ' and '
+                        string_rule += ' ' + self.unchanging_rule['conclusion_operators'][idx] + ' '
+                    if type(itm) is int:
+                        string_rule += (self.rule_element_to_string(self.unchanging_rule, idx, part='conclusion'))
+                    else:
+                        print("What?!? type of item is not an int!")
+                        print("rule_to_string() hypothesis loop.")
+
+                if len(rule["conclusion_idxes"]) != 0:
+                    string_rule += ')\nAND also ('
 
             if len(rule["conclusion_idxes"]) != 0:
                 if 'NOT' in rule["conclusion_operators"][0]:
@@ -366,16 +460,22 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
         for _ in range(sample_size):
             # rule["lines"] = rn.sample(self.data, 2)
-            rule["lines"] = self.sample_random_lines(2)
+            # rule["lines"] = self.sample_random_lines(2)
+            rule["lines"] = self.line_sampler(self, 2)
+
+            # Ugly but necessary to have lines there:
+            if self.unchanging_rule is not None:
+                self.unchanging_rule["lines"] = rule["lines"]
+
             # print(line)
             # print(self.rule_to_string(rule))
-            if self.is_relevant(rule):
+            if self.is_relevant(rule) and (self.unchanging_rule is None or self.is_relevant(self.unchanging_rule)):
                 relevance_count += 1
-                if self.is_correct(rule):
+                if self.is_correct(rule) and (self.unchanging_rule is None or self.is_correct(self.unchanging_rule)):
                     correctness_count += 1
                     conclusion_true_count += 1
             else:
-                if self.is_correct(rule):
+                if self.is_correct(rule) and (self.unchanging_rule is None or self.is_correct(self.unchanging_rule)):
                     conclusion_true_count += 1
 
         ret_val["relevance"] = relevance_count / sample_size
@@ -427,6 +527,8 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         :return: True if relevant for rule["lines"][0:2]
         """
         # self.last_rule["hypothesis_operators"]
+        # if rule == self.unchanging_rule:
+        #     print("Unchanging")
         relevance = False
         curr_idx = 0
         while curr_idx < len(rule["hypothesis_idxes"]):
@@ -445,7 +547,9 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
                 if 'NOT' in rule["hypothesis_operators"][idx]:
                     func_eval = not func_eval
 
-                if func_eval is False:
+                # if rule == self.unchanging_rule:
+                #     print(func_eval)
+                if not func_eval:
                     # clause failed. Advance to next clause (=next OR)
                     clause_relevance = False
                     while curr_idx < len(rule["hypothesis_idxes"]) \
@@ -546,6 +650,13 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         :param k: at least ciel(abs(k)) members in common
         :return: True iff there are at least k members in common
         """
+        # print(list1)
+        # print(list2)
+        # print(list(set(list1).intersection(set(list2))))
+        # print(len(set(list1).intersection(set(list2))), np.ceil(abs(k)))
+        # print(len(set(list1).intersection(set(list2))) >= np.ceil(abs(k)))
+        # input()
+
         if type(list1) is not list or type(list2) is not list:
             print(type(list1), type(list2))
             print(list1)
@@ -611,12 +722,20 @@ if __name__ == "__main__":
     #                       chosen_func["param_types"]]}
 
     # Same company different year.
-    _rg = ConnectionRuleGenerator(constraints=CRC.constraints3)
-    # _rg = ConnectionRuleGenerator(constraints=None)
+    # _rg = ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule1)
+    # _rg = ConnectionRuleGenerator(constraints=None, unchanging_rule=CRC.unchanging_rule2)
+    # _rg = ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule3,
+    #                               hash_key=None)
+    # _rg = ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule3,
+    #                               hash_key="director_list")
+    # _rg = ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule3,
+    #                               line_sampler=hash_same_sampler, hash_key="director_list")
+
+    _rg = ConnectionRuleGenerator(constraints=None)
 
     _t0 = t.time()
 
-    for _ in range(1):
+    for _ in range(100):
 
         _rule = _rg.generate_random_rule()
 
@@ -630,17 +749,17 @@ if __name__ == "__main__":
 
         _rule_score = _rg.calculate_correctness(_rule)
 
+        # print(_rule["hypothesis_operators"])
+        # print(_rule["conclusion_operators"])
         # print(_rule_as_string)
-        # # print(_rule["hypothesis_operators"])
-        # # print(_rule["conclusion_operators"])
         # print(_rule_score)
         # print()
 
         # if _rule_score['relevance'] > 0:
-        # if 0 < _rule_score['relevance'] < 1:
+        if 0.0 < _rule_score['relevance'] < 1.0:
         # if _rule_score['correctness'] > 0:
         # _if _rule_score['relevance'] > 0 and _rule_score['correctness'] > _rule_score['conclusion_true']:
-        if 0.1 < _rule_score['relevance'] < 0.9 and _rule_score['correctness'] > _rule_score['conclusion_true'] + 0.2:
+        # if 0.1 < _rule_score['relevance'] < 0.9 and _rule_score['correctness'] > _rule_score['conclusion_true'] + 0.2:
             print(_rule_as_string)
             print(_rule_score)
             print()

@@ -49,8 +49,8 @@ class RuleIndividual(Individual):
         pass
 
     def drop_random_element_from_rule(self):
-        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
-        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 and not self.hypothesis_mutable else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 and not self.conclusion_mutable else False
         choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
             'hypothesis' if not conclusion_flag else rn.choice(['hypothesis', 'conclusion'])))
         if choice is not None:
@@ -60,14 +60,19 @@ class RuleIndividual(Individual):
             self.rule[choice + '_operators'].__delitem__(del_idx)
 
     def add_random_element_to_rule(self):
-        choice = 'conclusion' if rn.random() < 0.5 else 'hypothesis'
-        lines = self.generator.sample_random_lines(2)
+        section_choices = []
+        section_choices += ['conclusion'] if self.conclusion_mutable else []
+        section_choices += ['hypothesis'] if self.hypothesis_mutable else []
+        section_choices += [None] if section_choices == [] else []
+        choice = rn.choice(section_choices)
+        if choice is not None:
+            lines = self.generator.sample_random_lines(2)
 
-        self.generator.add_element_to_rule(lines, choice, self.rule)
+            self.generator.add_element_to_rule(lines, choice, self.rule)
 
     def swap_random_element_in_rule(self):
-        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
-        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 and not self.hypothesis_mutable else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 and not self.conclusion_mutable else False
         choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
             'hypothesis' if not conclusion_flag else ('conclusion' if rn.random() < 0.5 else 'hypothesis')))
         if choice is not None:
@@ -76,8 +81,8 @@ class RuleIndividual(Individual):
             self.generator.swap_element_in_rule(lines, choice, element_idx, self.rule)
 
     def swap_rule_operator(self):
-        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
-        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 and not self.hypothesis_mutable else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 and not self.conclusion_mutable else False
         choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
             'hypothesis' if not conclusion_flag else ('conclusion' if rn.random() < 0.5 else 'hypothesis')))
         if choice is not None:
@@ -86,8 +91,8 @@ class RuleIndividual(Individual):
             self.generator.swap_operator_in_rule(lines, choice, operator_idx, self.rule)
 
     def tweak_rule_element(self):
-        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 else False
-        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 else False
+        hypothesis_flag = True if len(self.rule['hypothesis_idxes']) > 0 and not self.hypothesis_mutable else False
+        conclusion_flag = True if len(self.rule['conclusion_idxes']) > 0 and not self.conclusion_mutable else False
         choice = None if not (hypothesis_flag or conclusion_flag) else ('conclusion' if not hypothesis_flag else (
             'hypothesis' if not conclusion_flag else ('conclusion' if rn.random() < 0.5 else 'hypothesis')))
         if choice is not None:
