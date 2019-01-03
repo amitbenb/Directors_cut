@@ -91,7 +91,9 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
             while len(ret_val) < num_of_lines:
                 # All lines that share a key with first line.
                 # candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key)]
-                candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key) if
+                # candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key) if
+                #                    line not in ret_val]
+                candidate_lines = [line for key in keys for line in self.hash_table.find_all(key) if
                                    line not in ret_val]
                 if len(candidate_lines) == 0:
                     break

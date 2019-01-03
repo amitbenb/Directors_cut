@@ -13,8 +13,8 @@ if __name__ == "__main__":
     import handle_data.ConnectionRuleConstants as CRC
 
     Evolution._debug_output_flag = True
-    num_of_generations = 120
-    pop_size = 80
+    num_of_generations = 60
+    pop_size = 50
     # genome_len = 20
 
     # rg = CRGen.ConnectionRuleGenerator(constraints=None)
