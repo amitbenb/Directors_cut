@@ -27,11 +27,12 @@ class ListMembershipHashTable:
 
         return found_recs
 
-    def insert(self, line, key):
+    def insert(self, line_idx, key):
         idx = self.h(key)
         if self.table[idx] is None:
             # self.table[idx] = [[key, line]]
-            self.table[idx] = {key: [line]}
+            # self.table[idx] = {key: [line]}
+            self.table[idx] = {key: [line_idx]}
 
         # found_rec = (lambda x: x[0] if len(x) > 0 else [])(
         #     [i for i in self.table[idx] if len(i) > 0 and i[0][0] == key])
@@ -41,10 +42,13 @@ class ListMembershipHashTable:
         if len(found_rec) > 0:  # This means key found
             # if [key, line] not in found_rec:  # record not found. Insert.
             #     found_rec.append([key, line])
-            if line not in found_rec:  # record not found. Insert.
-                found_rec.append(line)
+            # if line not in found_rec:  # record not found. Insert.
+            #     found_rec.append(line)
+            if line_idx not in found_rec:  # record not found. Insert.
+                found_rec.append(line_idx)
         else:
             # self.table[idx] = [[key, line]]
-            self.table[idx][key] = [line]
+            # self.table[idx][key] = [line]
+            self.table[idx][key] = [line_idx]
 
 

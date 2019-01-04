@@ -60,17 +60,22 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
     def sample_random_lines(self, num_of_lines):
         # print("sample_random_lines")
         while True:
-            ret_val = [rn.choice(self.data)]
+            # ret_val = [rn.choice(self.data)]
+            line_indexes = [rn.choice(range(len(self.data)))]
 
-            while len(ret_val) < num_of_lines:
+            while len(line_indexes) < num_of_lines:
                 # ret_val += [i for i in [rn.choice(self.data)] if self.constraints_met(ret_val, i)]
-                ret_val += [i for i in [rn.choice(self.data)] if self.constraints_met(ret_val, i) and i not in ret_val]
+                # ret_val += [i for i in [rn.choice(self.data)] if
+                #             self.constraints_met(ret_val, i) and i not in ret_val]
+                line_indexes += [i for i in [rn.choice(range(len(self.data)))] if
+                                 self.constraints_met(
+                                     [self.data[j] for j in line_indexes], self.data[i]) and i not in line_indexes]
                 if rn.random() < 0.001:
                     # Avoid infinite loop due to no viable choice existing
                     break
 
-            if len(ret_val) == num_of_lines:
-                return ret_val
+            if len(line_indexes) == num_of_lines:
+                return [self.data[i] for i in line_indexes]
 
     def fill_up_table(self):
         """
@@ -78,36 +83,47 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         into the hash table for each of these keys
 
         """
-        for line in self.data:
+        # for line in self.data:
+        #     my_list_of_keys = line[self.hash_key]
+        #     for key in my_list_of_keys:
+        #         self.hash_table.insert(line, key)
+        for line_idx, line in enumerate(self.data):
             my_list_of_keys = line[self.hash_key]
             for key in my_list_of_keys:
-                self.hash_table.insert(line, key)
+                self.hash_table.insert(line_idx, key)
 
     def sample_hash_shared_member_lines(self, num_of_lines):
         while True:
-            ret_val = [rn.choice(self.data)]
-            keys = ret_val[0][self.hash_key]  # These are the keys one of which must be shared.
+            # ret_val = [rn.choice(self.data)]
+            line_indexes = [rn.choice(range(len(self.data)))]
+            keys = self.data[line_indexes[0]][self.hash_key]  # These are the keys one of which must be shared.
 
-            while len(ret_val) < num_of_lines:
+            while len(line_indexes) < num_of_lines:
                 # All lines that share a key with first line.
                 # candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key)]
                 # candidate_lines = [line for key in keys for [_, line] in self.hash_table.find_all(key) if
                 #                    line not in ret_val]
-                candidate_lines = [line for key in keys for line in self.hash_table.find_all(key) if
-                                   line not in ret_val]
+                # candidate_lines = [line for key in keys for line in self.hash_table.find_all(key) if
+                #                    line not in ret_val]
+                candidate_lines = [line_idx for key in keys for line_idx in self.hash_table.find_all(key) if
+                                   line_idx not in line_indexes]
+                candidate_lines = list(set(candidate_lines))
                 if len(candidate_lines) == 0:
                     break
 
                 # print(keys[0])
                 # print(self.hash_table.search(keys[0]))
 
-                ret_val += [i for i in [rn.choice(candidate_lines)] if self.constraints_met(ret_val, i)]
+                # ret_val += [i for i in [rn.choice(candidate_lines)]
+                #             if self.constraints_met(ret_val, i)]
+                line_indexes += [i for i in [rn.choice(candidate_lines)]
+                            if self.constraints_met([self.data[j] for j in line_indexes], self.data[i])]
                 if rn.random() < 0.001:
                     # Avoid infinite loop due to no viable choice existing
                     break
 
-            if len(ret_val) == num_of_lines:
-                return ret_val
+            if len(line_indexes) == num_of_lines:
+                return [self.data[i] for i in line_indexes]
 
     def constraints_met(self, lines, new_line):
         if self.constraints is None:
