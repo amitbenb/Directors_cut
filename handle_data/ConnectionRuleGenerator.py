@@ -47,6 +47,7 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         self.line_sampler = line_sampler if line_sampler is not None else random_sampler
         self.hash_key = hash_key
         self.hash_table = None if hash_key is None else HTable.ListMembershipHashTable()
+        self.data_neighbors = [None for _ in self.data]
         if self.hash_table is not None:
             self.fill_up_table()
         pass
@@ -105,9 +106,17 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
                 #                    line not in ret_val]
                 # candidate_lines = [line for key in keys for line in self.hash_table.find_all(key) if
                 #                    line not in ret_val]
-                candidate_lines = [line_idx for key in keys for line_idx in self.hash_table.find_all(key) if
-                                   line_idx not in line_indexes]
-                candidate_lines = list(set(candidate_lines))
+                # candidate_lines = [line_idx for key in keys for line_idx in self.hash_table.find_all(key) if
+                #                    line_idx not in line_indexes]
+                # candidate_lines = list(set(candidate_lines))
+
+                if self.data_neighbors[line_indexes[-1]] is None:
+                    self.data_neighbors[line_indexes[-1]] = list(set(
+                        [line_idx for key in keys for line_idx in self.hash_table.find_all(key) if
+                         line_idx not in line_indexes and self.constraints_met([self.data[j] for j in line_indexes],
+                                                                               self.data[line_idx])]))
+
+                candidate_lines = self.data_neighbors[line_indexes[-1]]
                 if len(candidate_lines) == 0:
                     break
 
@@ -116,8 +125,9 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
                 # ret_val += [i for i in [rn.choice(candidate_lines)]
                 #             if self.constraints_met(ret_val, i)]
-                line_indexes += [i for i in [rn.choice(candidate_lines)]
-                            if self.constraints_met([self.data[j] for j in line_indexes], self.data[i])]
+                # line_indexes += [i for i in [rn.choice(candidate_lines)]
+                #                  if self.constraints_met([self.data[j] for j in line_indexes], self.data[i])]
+                line_indexes += [rn.choice(candidate_lines)]
                 if rn.random() < 0.001:
                     # Avoid infinite loop due to no viable choice existing
                     break
