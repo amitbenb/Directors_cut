@@ -1,3 +1,4 @@
+import time as t
 import random as rn
 import copy as cp
 import numpy as np
@@ -15,14 +16,22 @@ class RuleIndividual(Individual):
 
     def __init__(self, rule, generator, hypothesis_mutable=True, conclusion_mutable=True):
         self.rule = rule
+        # print(rule)
+        # input()
         self.generator = generator
-        self.scores = None
-        self.fitness = 0.0
         self.hypothesis_mutable = hypothesis_mutable
         self.conclusion_mutable = conclusion_mutable
+        self.scores = None
+        self.fitness = 0.0
 
     def self_replicate(self):
-        return RuleIndividual(cp.deepcopy(self.rule))
+        rule = {i: cp.deepcopy(self.rule[i]) for i in self.rule if i != 'lines'}
+        rule['lines'] = self.rule['lines']  # Deep copying this monstrosity takes too long.
+        r = RuleIndividual(self.rule, self.generator, self.hypothesis_mutable, self.conclusion_mutable)
+        r.scores = self.scores
+        r.set_fitness(self.get_fitness())
+        # return RuleIndividual(cp.deepcopy(self.rule), self.generator)
+        return r
 
     def mutate(self):
         self.mutate_rule()
@@ -102,17 +111,26 @@ class RuleIndividual(Individual):
 
     def calculate_fitness(self):
         # print("fitness")
-        self.scores = self.generator.calculate_correctness(self.rule)
+        if self.get_fitness() == 0.0:
+            self.scores = self.generator.calculate_correctness(self.rule)
+        else:
+            self.scores = self.generator.calculate_correctness(self.rule, factor=0.1)
         relevance, correctness, conclusion_true = self.scores['relevance'], self.scores['correctness'], self.scores[
             'conclusion_true']
-        # self.fitness = 0 if conclusion_true == 0 else correctness / conclusion_true
-        # self.fitness = 1 + (correctness - conclusion_true) * relevance * (1 - relevance)
-        # self.fitness = 1 + (correctness - conclusion_true) * 2 * min(relevance, (1 - relevance))
-        self.fitness = 1 + (correctness - conclusion_true) * 7 * min(1.0 / 7.0, relevance, (1 - relevance))
-        # self.fitness = 1 + rn.random()
+        # fitness = 0 if conclusion_true == 0 else correctness / conclusion_true
+        # fitness = 1 + (correctness - conclusion_true) * relevance * (1 - relevance)
+        # fitness = 1 + (correctness - conclusion_true) * 2 * min(relevance, (1 - relevance))
+        fitness = 1 + (correctness - conclusion_true) * 7 * min(1.0 / 7.0, relevance, (1 - relevance))
+        # fitness = 1 + rn.random()
+
+        self.set_fitness(fitness if self.get_fitness() == 0.0 else 0.9 * self.fitness + 0.1 * fitness)
         return self.fitness
 
     def get_fitness(self):
+        return self.fitness
+
+    def set_fitness(self, fitness):
+        self.fitness = fitness
         return self.fitness
 
 

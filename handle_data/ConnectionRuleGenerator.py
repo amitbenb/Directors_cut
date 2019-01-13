@@ -50,6 +50,8 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         self.data_neighbors = [None for _ in self.data]
         if self.hash_table is not None:
             self.fill_up_table()
+        self.hyp_gen_min = self.conc_gen_min = 1
+        self.hyp_gen_max = self.conc_gen_max = 0
         pass
 
     def generate_random_rule(self):
@@ -159,8 +161,10 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         # print(conclusion_indexes)
 
         # print(lines[0])
-        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(1, 3)),
-                          "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(0, 0)),
+        self.last_rule = {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes,
+                                                                        rn.randint(self.hyp_gen_min, self.hyp_gen_max)),
+                          "conclusion_idxes": rn.sample(conclusion_indexes,
+                                                        rn.randint(self.conc_gen_min, self.conc_gen_max)),
                           "hypothesis_functions": [], "conclusion_functions": [],
                           "hypothesis_operators": [], "conclusion_operators": []}
 
@@ -478,11 +482,11 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
         return ret_val
 
-    def calculate_correctness(self, rule='last rule'):
+    def calculate_correctness(self, rule='last rule', factor=1.0):
         if rule == 'last rule':
             rule = self.last_rule
         ret_val = {"correctness": 0.0, "relevance": 0.0, "conclusion_true": 0.0}
-        sample_size = _sample_size
+        sample_size = int(_sample_size * factor)
         # mini_sample_size = _mini_sample_size
         conclusion_true_count = relevance_count = correctness_count = 0.0
 
@@ -784,10 +788,12 @@ if __name__ == "__main__":
         # print()
 
         # if _rule_score['relevance'] > 0:
-        if 0.0 < _rule_score['relevance'] < 1.0:
+        # if 0.0 < _rule_score['relevance'] < 1.0:
         # if _rule_score['correctness'] > 0:
         # _if _rule_score['relevance'] > 0 and _rule_score['correctness'] > _rule_score['conclusion_true']:
-        # if 0.1 < _rule_score['relevance'] < 0.9 and _rule_score['correctness'] > _rule_score['conclusion_true'] + 0.2:
+        if 0.1 < _rule_score['relevance'] < 0.9 and _rule_score['correctness'] > _rule_score['conclusion_true'] + 0.2:
+            print(_rule)
+            print([i for i in _rule])
             print(_rule_as_string)
             print(_rule_score)
             print()

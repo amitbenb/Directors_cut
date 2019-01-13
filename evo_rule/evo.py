@@ -13,8 +13,8 @@ if __name__ == "__main__":
     import handle_data.ConnectionRuleConstants as CRC
 
     Evolution._debug_output_flag = True
-    num_of_generations = 60
-    pop_size = 50
+    num_of_generations = 200
+    pop_size = 200
     # genome_len = 20
 
     # rg = CRGen.ConnectionRuleGenerator(constraints=None)
@@ -27,6 +27,7 @@ if __name__ == "__main__":
 
     # inds = [RuleInd.RuleIndividual(rg.generate_random_rule(), rg) for _ in range(pop_size)]
 
+    rg.conc_gen_min = rg.conc_gen_max = 0  # Empty automatically generated conclusion
     inds = [RuleInd.RuleIndividual(rg.generate_random_rule(),
                                    rg, hypothesis_mutable=True,
                                    conclusion_mutable=False) for _ in range(pop_size)]
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     get_fitness = RuleInd.RuleIndividual.get_fitness
 
     init_p = MiscPhases.SimpleInitPhase(num_of_generations)
-    elite_e_p = Selection.SimpleExtractElitePhase(get_fitness, elite_size=3)
+    elite_e_p = Selection.SimpleExtractElitePhase(get_fitness, elite_size=5)
     elite_m_p = Selection.SimpleMergeElitePhase()
     select_p = Selection.TournamentSelectionPhase(get_fitness, tour_size=2)
     mut_p = MutationPhase(probability=0.2)
@@ -46,6 +47,7 @@ if __name__ == "__main__":
                                     fitness_getter_function=get_fitness)
     record_p = MiscPhases.MaintainBestsPhase(get_fitness)
 
+    # cyc = Evolution.Cycle([select_p, record_p])
     cyc = Evolution.Cycle([select_p, mut_p, eval_p, record_p])
     # cyc = Evolution.Cycle([elite_e_p, select_p, mut_p, elite_m_p, eval_p, record_p])
     ebody = Evolution.EpochBasicBody(cyc, init_p.check_gen_limit)
@@ -61,5 +63,12 @@ if __name__ == "__main__":
     print(record_p.best_ever_ind.rule_to_string())
     print(record_p.best_ever_ind.scores)
     print("Fitness: %.5f" % record_p.best_ever_ind.fitness)
+
+    # import copy as cp
+    # _t0 = t.time()
+    # for i in range(10):
+    #     cp.deepcopy(inds[0])
+    # _t1 = t.time()
+    # print("\nDeep copy time: %.3f" % (_t1 - _t0))
 
     pass
