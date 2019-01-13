@@ -50,8 +50,8 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         self.data_neighbors = [None for _ in self.data]
         if self.hash_table is not None:
             self.fill_up_table()
-        self.hyp_gen_min = self.conc_gen_min = 1
-        self.hyp_gen_max = self.conc_gen_max = 0
+        self.hyp_gen_min = self.conc_gen_min = 0
+        self.hyp_gen_max = self.conc_gen_max = 3
         pass
 
     def generate_random_rule(self):
