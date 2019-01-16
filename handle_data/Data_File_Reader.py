@@ -1,8 +1,18 @@
 import time as t
 import copy as cp
+import random as rn
 import re
 
-_main_dir = "C:/Users/User/PycharmProjects/Directors_cut/"
+import handle_data.ConstantsAndUtil as ConstUtil
+
+
+def eliminate_bad_commas(line):
+    li = line.split('"', 2)
+    while len(li) == 3:
+        li = li[0] + li[1].replace(',', ' _AND_') + li[2]
+        li = li.split('"', 2)
+
+    return li[0]
 
 
 def read_file_into_dicts(filename):
@@ -13,15 +23,23 @@ def read_file_into_dicts(filename):
         # print(first_line)
 
         for line in f:
-            parsed_line = line.split(',')
+
+            parsed_line = eliminate_bad_commas(line).split(',')
             dicts.append({})
             # line = f.readline()
             # line = f.readline().split(',')
-            # print(line)
+            # if 'new_Dir' in filename:
+            #     print(filename, line)
             for idx, itm in enumerate(first_line):
-                # dicts[-1][itm.replace('\n', '')] = parsed_line[idx]
-                dicts[-1][ itm.replace('\n', '') ] = parsed_line[ idx ].split('.0')[0]
-            # print(dicts[-1])
+                # if len(parsed_line)<=idx:
+                #     print(len(parsed_line),idx)
+                #     print(parsed_line)
+                if parsed_line[idx].endswith('.0'):
+                    dicts[-1][itm.replace('\n', '')] = parsed_line[idx].split('.0')[0]
+                else:
+                    dicts[-1][itm.replace('\n', '')] = parsed_line[idx]
+            # if 'new_Dir' in filename:
+            #     print(dicts[-1])
 
     return dicts
 
@@ -62,13 +80,16 @@ def fix_director_data(data):
 
 
 def merge_company_director_data(company_data, director_data):
-    jdx = 0
+    c = 0
     for i in company_data:
-        i["director_list_len"] = ''  # for extra length data.
+        print(c)
+        c += 1
         i["director_list"] = []
-        while jdx < len(director_data) and director_data[jdx]["group_comp_id"] == i["group_comp_id"] and \
-                director_data[jdx]["fyear"] == i["fyear"]:
-            i["director_list"].append(director_data[jdx]["dir_id"])
+        i["director_list_len"] = ''  # for extra length data.
+        jdx = 0
+        while jdx < len(director_data):
+            if director_data[jdx]["group_comp_id"] == i["group_comp_id"] and director_data[jdx]["fyear"] == i["fyear"]:
+                i["director_list"].append(director_data[jdx]["dir_id"])
             jdx += 1
         # print(len(i["director_list"]))
         i["director_list_len"] = len(i["director_list"])  # for extra length data.
@@ -122,51 +143,77 @@ def load_data_file(company_and_director_data, filename):
                         company_and_director_data[-1][itm.replace('\n', '')] = parsed_line[idx].replace(
                             '&&', '').split('&')
                 elif itm in ['fyear', 'log_ta', 'mtb', 'debtat', 'roa'] and parsed_line[idx] is not '':
-                    # print(itm, parsed_line[idx], idx)
-                    # print(type(parsed_line[idx]))
-                    if re.match(r'-?\d+', parsed_line[idx])[0] == parsed_line[idx]:
-                        company_and_director_data[-1][itm.replace('\n', '')] = int(parsed_line[idx])
-                    elif re.match(r'-?\d+[.]\d+', parsed_line[idx])[0] == parsed_line[idx]:
-                        company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
-                    elif re.match(r'-?\d[.]\d+E-\d+', parsed_line[idx])[0] == parsed_line[idx]:
-                        company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
-                    elif re.match(r'-?\d[.]\d+E\+\d+', parsed_line[idx])[0] == parsed_line[idx]:
-                        company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
+                    try:
+                        if re.match(r'-?\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                            company_and_director_data[-1][itm.replace('\n', '')] = int(parsed_line[idx])
+                        elif re.match(r'-?\d+[.]\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                            company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
+                        elif re.match(r'-?\d[.]\d+[eE]-\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                            company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
+                        elif re.match(r'-?\d[.]\d+[eE]\+\d+', parsed_line[idx])[0] == parsed_line[idx]:
+                            company_and_director_data[-1][itm.replace('\n', '')] = float(parsed_line[idx])
+                    except Exception:
+                        print(re.match(r'-?\d[.]\d+[eE]-\d+', parsed_line[idx]))
+                        print(itm, parsed_line[idx], idx)
+                        print(type(parsed_line[idx]))
+                        raise
+
                 elif itm is not '\n':
                     company_and_director_data[-1][itm.replace('\n', '')] = parsed_line[idx]
 
 
 if __name__ == "__main__":
-    _company_filename = _main_dir + "data/company_data01.csv"
-    _director_filename = _main_dir + "data/director_data01.csv"
+    main_dir = ConstUtil._main_dir
+    _company_filename = main_dir + "data/new_Comp.csv"
+    _director_filename = main_dir + "data/new_Dir.csv"
+
+    make_merged_data = True
+    cut_from_merged_data = True
 
     t1 = t.time()
 
-    # _company_data = read_file_into_dicts(_company_filename)
-    # _company_data_fixed = fix_company_data(_company_data)
-    # _director_data = read_file_into_dicts(_director_filename)
-    # _director_data_fixed = fix_company_data(_director_data)
+    if make_merged_data:
 
-    _company_data_fixed = fix_company_data(read_file_into_dicts(_company_filename))
-    _director_data_fixed = fix_company_data(read_file_into_dicts(_director_filename))
+        # _company_data = read_file_into_dicts(_company_filename)
+        # _company_data_fixed = fix_company_data(_company_data)
+        # _director_data = read_file_into_dicts(_director_filename)
+        # _director_data_fixed = fix_company_data(_director_data)
 
-    # print(_company_data_fixed[0]['group_comp_id'])
-    # print(_company_data_fixed == sorted(_company_data_fixed, key=lambda xx: xx['group_comp_id']))
+        _company_data_fixed = fix_company_data(read_file_into_dicts(_company_filename))
+        _director_data_fixed = fix_director_data(read_file_into_dicts(_director_filename))
 
-    _company_and_director_data = merge_company_director_data(_company_data_fixed, _director_data_fixed)
-    # group_comp_id
-    # dir_id
-    # fyear
+        # print(_company_data_fixed[0]['group_comp_id'])
+        # print(_company_data_fixed == sorted(_company_data_fixed, key=lambda xx: xx['group_comp_id']))
+        # for _i in range(1000):
+        #     if rn.random() < 0.02:
+        #         print(_director_data_fixed[_i]['dir_id'])
 
-    _company_data_fixed = _director_data_fixed = None
+        _company_and_director_data = merge_company_director_data(_company_data_fixed, _director_data_fixed)
+        # group_comp_id
+        # dir_id
+        # fyear
 
-    save_data_file(_company_and_director_data, _main_dir + "data/merged_data.csv")
-    # _company_and_director_data2 = []
-    # load_data_file(_company_and_director_data2, _main_dir + "data/merged_data.csv")
+        _company_data_fixed = _director_data_fixed = None
 
-    # print(_company_and_director_data[7] == _company_and_director_data2[7])
-    # print(_company_and_director_data[7])
-    # print(_company_and_director_data2[7])
+        save_data_file(_company_and_director_data, main_dir + "data/merged_extended_data.csv")
+
+        # _company_and_director_data2 = []
+        # load_data_file(_company_and_director_data2, main_dir + "data/merged_data.csv")
+
+        # print(_company_and_director_data[7] == _company_and_director_data2[7])
+        # print(_company_and_director_data[7])
+        # print(_company_and_director_data2[7])
+
+    if cut_from_merged_data:
+        _company_and_director_data = []
+        load_data_file(_company_and_director_data, main_dir + "data/merged_extended_data.csv")
+
+        cut_data = []
+        for _line in _company_and_director_data:
+            if _line['dam_stock'] in ['0', '1']:
+                cut_data.append(_line)
+        save_data_file(cut_data, main_dir + "data/merged_ext_data_dam_stock.csv")
+
 
     t2 = t.time()
 

@@ -19,7 +19,7 @@ unchanging_rule2 = {"hypothesis_idxes": _rg.get_indexes_for_keys(['director_list
 unchanging_rule3 = {"hypothesis_idxes": [],
                     "hypothesis_functions": [],
                     "hypothesis_operators": [],
-                    "conclusion_idxes": _rg.get_indexes_for_keys(['dam_option_awards']),
+                    "conclusion_idxes": _rg.get_indexes_for_keys(['dam_stock']),
                     "conclusion_functions": [{"func_name": 'same_as', "extra_parameters": []}],
                     "conclusion_operators": ['AND']}
 
@@ -33,6 +33,10 @@ constraints2 = {"hypothesis_idxes": _rg.get_indexes_for_keys(['debtat']),
 constraints3 = {"hypothesis_idxes": _rg.get_indexes_for_keys(['director_list']),
                 "hypothesis_functions": [{"func_name": 'member_in_common', "extra_parameters": []}],
                 "hypothesis_operators": ['AND']}
+constraints4 = {"hypothesis_idxes": _rg.get_indexes_for_keys(['director_list', 'group_comp_id']),
+                "hypothesis_functions": [{"func_name": 'member_in_common', "extra_parameters": []},
+                                         {"func_name": 'same_as', "extra_parameters": []}],
+                "hypothesis_operators": ['AND', 'AND NOT']}
 
 
 

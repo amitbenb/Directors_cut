@@ -3,13 +3,12 @@ import copy as cp
 import time as t
 import numpy as np
 
-import re
-
-# import handle_data.Data_File_Reader as DataReader
+import handle_data.ConstantsAndUtil as ConstUtil
 import handle_data.RuleGenerator as RuleGen
 import handle_data.ListMembershipHashTable as HTable
 
 # re.match(r'\d+[.]\d+','12.34')[0]=='12.34'
+from handle_data.ConstantsAndUtil import _sample_size
 
 _list_of_method_names = [
     {'name': 'member_in_common', 'types': [list], 'param_types': []},
@@ -24,9 +23,6 @@ _list_of_method_names = [
 ]
 # _list_of_function_names = []
 
-_sample_size = 1000
-# _mini_sample_size = 1000
-
 
 def random_sampler(generator, num_of_lines):
     return generator.sample_random_lines(num_of_lines)
@@ -37,8 +33,9 @@ def hash_same_sampler(generator, num_of_lines):
 
 
 class ConnectionRuleGenerator(RuleGen.RuleGenerator):
-    def __init__(self, constraints=None, unchanging_rule=None, line_sampler=None, hash_key=None):
-        RuleGen.RuleGenerator.__init__(self, data_file_name=RuleGen._data_file_name)
+    def __init__(self, data_file_path=ConstUtil._data_file_path, constraints=None, unchanging_rule=None,
+                 line_sampler=None, hash_key=None):
+        RuleGen.RuleGenerator.__init__(self, data_file_name=data_file_path)
         # if hash_key is not None:
         #     print(self.data[0][hash_key])
         #     input()
@@ -205,9 +202,9 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
         lengths = [len(i) for i in lines]
         indexes = list(range(lengths[0]))
         hypothesis_indexes = [i for i in cp.deepcopy(indexes) if
-                              (list(lines[0].items())[i][0]) in RuleGen._hypothesis_field_list]
+                              (list(lines[0].items())[i][0]) in ConstUtil._hypothesis_field_list]
         conclusion_indexes = [i for i in cp.deepcopy(indexes) if
-                              (list(lines[0].items())[i][0]) in RuleGen._conclusion_field_list]
+                              (list(lines[0].items())[i][0]) in ConstUtil._conclusion_field_list]
         return hypothesis_indexes, conclusion_indexes
 
     def add_element_to_rule(self, lines, hyp_or_conc, rule=None):
@@ -741,8 +738,6 @@ class ConnectionRuleGenerator(RuleGen.RuleGenerator):
 
 
 if __name__ == "__main__":
-
-    import handle_data.ConnectionRuleConstants as CRC
 
     # {"lines": lines, "hypothesis_idxes": rn.sample(hypothesis_indexes, rn.randint(3, 4)),
     #  "conclusion_idxes": rn.sample(conclusion_indexes, rn.randint(1, 2)),

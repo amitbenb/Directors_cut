@@ -6,6 +6,8 @@ from evo_core.evo_tools import Selection
 from evo_core.evo_tools import MiscPhases
 from evo_rule.RuleIndividual import MutationPhase, FitnessEvaluationPhase
 
+import handle_data.ConstantsAndUtil as ConstUtil
+import handle_data.Data_File_Reader as DataReader
 from handle_data import ConnectionRuleGenerator as CRGen
 import evo_rule.RuleIndividual as RuleInd
 
@@ -16,13 +18,20 @@ if __name__ == "__main__":
     num_of_generations = 200
     pop_size = 200
     # genome_len = 20
+    main_dir = ConstUtil._main_dir
+    data_file_path = ConstUtil._data_file_path = main_dir + "data/merged_ext_data_dam_stock.csv"
+
 
     # rg = CRGen.ConnectionRuleGenerator(constraints=None)
 
     # rg = CRGen.ConnectionRuleGenerator(constraints=None, unchanging_rule=CRC.unchanging_rule3,
-    #                                    line_sampler=None, hash_key="director_list")
+    #                                    line_sampler=None)
 
-    rg = CRGen.ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule3,
+    # rg = CRGen.ConnectionRuleGenerator(constraints=CRC.constraints3, unchanging_rule=CRC.unchanging_rule3,
+    #                                    line_sampler=CRGen.hash_same_sampler, hash_key="director_list")
+    #
+
+    rg = CRGen.ConnectionRuleGenerator(constraints=CRC.constraints4, unchanging_rule=CRC.unchanging_rule3,
                                        line_sampler=CRGen.hash_same_sampler, hash_key="director_list")
 
     # inds = [RuleInd.RuleIndividual(rg.generate_random_rule(), rg) for _ in range(pop_size)]
@@ -41,15 +50,15 @@ if __name__ == "__main__":
     init_p = MiscPhases.SimpleInitPhase(num_of_generations)
     elite_e_p = Selection.SimpleExtractElitePhase(get_fitness, elite_size=5)
     elite_m_p = Selection.SimpleMergeElitePhase()
-    select_p = Selection.TournamentSelectionPhase(get_fitness, tour_size=2)
+    select_p = Selection.TournamentSelectionPhase(get_fitness, tour_size=4)
     mut_p = MutationPhase(probability=0.2)
     eval_p = FitnessEvaluationPhase(fitness_calc_function=calc_fitness,
                                     fitness_getter_function=get_fitness)
     record_p = MiscPhases.MaintainBestsPhase(get_fitness)
 
-    # cyc = Evolution.Cycle([select_p, record_p])
-    cyc = Evolution.Cycle([select_p, mut_p, eval_p, record_p])
-    # cyc = Evolution.Cycle([elite_e_p, select_p, mut_p, elite_m_p, eval_p, record_p])
+    # cyc = Evolution.Cycle([select_p, eval_p, record_p])
+    # cyc = Evolution.Cycle([select_p, mut_p, eval_p, record_p])
+    cyc = Evolution.Cycle([elite_e_p, select_p, mut_p, elite_m_p, eval_p, record_p])
     ebody = Evolution.EpochBasicBody(cyc, init_p.check_gen_limit)
     epo = Evolution.Epoch(ebody, init_cycle=Evolution.Cycle([init_p, eval_p, record_p]))
     evo = Evolution.Evolution(epo)

@@ -27,13 +27,14 @@ class RuleIndividual(Individual):
     def self_replicate(self):
         rule = {i: cp.deepcopy(self.rule[i]) for i in self.rule if i != 'lines'}
         rule['lines'] = self.rule['lines']  # Deep copying this monstrosity takes too long.
-        r = RuleIndividual(self.rule, self.generator, self.hypothesis_mutable, self.conclusion_mutable)
+        r = RuleIndividual(rule, self.generator, self.hypothesis_mutable, self.conclusion_mutable)
         r.scores = self.scores
         r.set_fitness(self.get_fitness())
         # return RuleIndividual(cp.deepcopy(self.rule), self.generator)
         return r
 
     def mutate(self):
+        self.set_fitness(0.0)
         self.mutate_rule()
         # pass
         # print(self.rule)
@@ -44,13 +45,13 @@ class RuleIndividual(Individual):
     def mutate_rule(self):
         choice = rn.random()
         # if choice < 1.0:
-        if choice < 1.0 / 5.0:
+        if choice < 2.0 / 6.0:  # Bias against condition growth
             self.drop_random_element_from_rule()
-        elif choice < 2.0 / 5.0:
+        elif choice < 3.0 / 6.0:
             self.add_random_element_to_rule()
-        elif choice < 3.0 / 5.0:
+        elif choice < 4.0 / 6.0:
             self.swap_random_element_in_rule()
-        elif choice < 4.0 / 5.0:
+        elif choice < 5.0 / 6.0:
             self.swap_rule_operator()
         else:
             self.tweak_rule_element()
@@ -111,6 +112,7 @@ class RuleIndividual(Individual):
 
     def calculate_fitness(self):
         # print("fitness")
+        # self.scores = self.generator.calculate_correctness(self.rule)
         if self.get_fitness() == 0.0:
             self.scores = self.generator.calculate_correctness(self.rule)
         else:
@@ -123,8 +125,9 @@ class RuleIndividual(Individual):
         fitness = 1 + (correctness - conclusion_true) * 7 * min(1.0 / 7.0, relevance, (1 - relevance))
         # fitness = 1 + rn.random()
 
-        self.set_fitness(fitness if self.get_fitness() == 0.0 else 0.9 * self.fitness + 0.1 * fitness)
-        return self.fitness
+        # self.set_fitness(fitness)
+        self.set_fitness(fitness if self.get_fitness() == 0.0 else 0.9 * self.get_fitness() + 0.1 * fitness)
+        return self.get_fitness()
 
     def get_fitness(self):
         return self.fitness

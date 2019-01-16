@@ -2,19 +2,12 @@ import random as rn
 import copy as cp
 
 import handle_data.Data_File_Reader as DataReader
-
-_data_file_name = DataReader._main_dir + "data/merged_data.csv"
-# _hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs',
-#                           'director_list']
-_hypothesis_field_list = ['fyear', 'log_ta', 'mtb', 'debtat', 'roa', 'sic', 'group_comp_id', 'list_of_dmcs',
-                          'list_of_dmcs_len', 'director_list', 'director_list_len']
-_conclusion_field_list = ['dam_option_awards', 'dam_stock', 'dam_acc', 'dam_abs', 'dam_rel']
-_sample_size = 1000  # This isn't used in derived classes
+import handle_data.ConstantsAndUtil as ConstUtil
 
 
 class RuleGenerator:
 
-    def __init__(self, data_file_name=_data_file_name):
+    def __init__(self, data_file_name=ConstUtil._data_file_path):
         self.data = []
         self.last_rule = {}
         DataReader.load_data_file(self.data, data_file_name)
@@ -32,8 +25,8 @@ class RuleGenerator:
 
         # hypothesis_indexes = [i for i in cp.deepcopy(indexes) if not (list(line.items())[i][0]).startswith('dam')]
         # conclusion_indexes = [i for i in cp.deepcopy(indexes) if (list(line.items())[i][0]).startswith('dam')]
-        hypothesis_indexes = [i for i in cp.deepcopy(indexes) if (list(line.items())[i][0]) in _hypothesis_field_list]
-        conclusion_indexes = [i for i in cp.deepcopy(indexes) if (list(line.items())[i][0]) in _conclusion_field_list]
+        hypothesis_indexes = [i for i in cp.deepcopy(indexes) if (list(line.items())[i][0]) in ConstUtil._hypothesis_field_list]
+        conclusion_indexes = [i for i in cp.deepcopy(indexes) if (list(line.items())[i][0]) in ConstUtil._conclusion_field_list]
 
         self.last_rule = {}
         self.last_rule["line"] = line
@@ -126,7 +119,7 @@ class RuleGenerator:
         if rule == 'last rule':
             rule = self.last_rule
         ret_val = {"correctness": 0.0, "relevance": 0.0, "conclusion_true": 0.0}
-        sample_size = _sample_size
+        sample_size = ConstUtil._sample_size
         conclusion_true_count = relevance_count = correctness_count = 0.0
 
         for _ in range(sample_size):
